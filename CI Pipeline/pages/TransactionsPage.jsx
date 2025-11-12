@@ -10,10 +10,10 @@ import { useAuth } from "../shared/hooks";
 import { useAddTransaction } from "../features/transaction-add";
 import { incomeCategories, expenseCategories, TRANSACTION_TYPES } from "../shared/config";
 import { startSpeechRecognition } from "../frontend/speech";
-import { GoogleGenerativeAI } from "../shared/lib/generativeAI";
 
-const genAI = new GoogleGenerativeAI(process.env.REACT_APP_GOOGLE_API);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+const SUPABASE_PROJECT_URL = 'https://nvbdupcoynrzkrwyhrjc.supabase.co';
+const GEMINI_PROXY_ENDPOINT = `${SUPABASE_PROJECT_URL}/functions/v1/gemini-proxy`;
 
 const TransactionsPage = () => {
   const navigate = useNavigate();
@@ -111,13 +111,27 @@ Phân tích yêu cầu của người dùng bên dưới và trả về **duy nh
 Yêu cầu của người dùng: "${userMessage}"
 `;
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const jsonString = response
-        .text()
-        .replace(/```json/g, "")
-        .replace(/```/g, "")
-        .trim();
+      const response = await fetch(GEMINI_PROXY_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        prompt,
+        model: "gemini-2.5-flash"
+      })
+    });
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || 'API call failed');
+    }
+
+    const jsonString = data.response
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+
       return JSON.parse(jsonString);
     } catch (error) {
       console.error("Lỗi phân tích ý định:", error);
