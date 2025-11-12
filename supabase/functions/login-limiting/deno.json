@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "lib": ["esnext", "dom", "deno.ns"]
+  },
+  "imports": {
+    "bcrypt": "npm:bcryptjs@2.4.3",
+    "@upstash/redis": "npm:@upstash/redis@1.34.3"
+  }
+}

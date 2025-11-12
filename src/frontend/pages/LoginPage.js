@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import CryptoJS from "crypto-js";
 
 const SECRET_KEY = process.env.REACT_APP_SECRET_KEY;
+const SUPABASE_PROJECT_URL = 'https://nvbdupcoynrzkrwyhrjc.supabase.co';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -18,41 +19,47 @@ function LoginPage() {
     setShowPassword(!showPassword);
   };
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    async function signIn(username, password) {
-      // Lấy user từ bảng "users"
-      const { data, error } = await supabase
-        .from("users")
-        .select("user_id, password_hash")
-        .eq("user_name", username)
-        .single();
+const handleLogin = (e) => {
+  e.preventDefault();    
+  async function signIn(username, password) {
+      // 1. Xác định URL của Edge Function (Đã deploy)
+      const EDGE_URL = `${SUPABASE_PROJECT_URL}/functions/v1/login-limiting`;
 
-      if (error || !data) {
-        alert("Sai tài khoản hoặc mật khẩu!");
-        return;
+      // 2. Gửi yêu cầu đăng nhập đến Edge Function (Server-Side)
+      const response = await fetch(EDGE_URL, {
+          method: 'POST',
+          headers: {
+             'Content-Type': 'application/json',
+             'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`
+             },
+          body: JSON.stringify({ username, password }),
+      });
+      
+      const result = await response.json();
+
+      // 3. Xử lý Lỗi từ Edge Function (429 Rate Limit hoặc 401 Xác thực)
+      if (response.status !== 200) {
+          alert(result.error); 
+          return;
       }
 
-      // Kiểm tra mật khẩu nhập vào có khớp với hash không
-      const isMatch = await bcrypt.compare(password, data.password_hash);
-      if (isMatch) {
-        console.log(`Đăng nhập thành công! Xin chào, ${username}`);
-        alert(`Đăng nhập thành công! Xin chào, ${username}`);
+      // 4. ĐĂNG NHẬP THÀNH CÔNG (Edge Function trả về user_id KHÔNG mã hóa)
+      console.log(`Đăng nhập thành công! Xin chào, ${username}`);
+      alert(`Đăng nhập thành công! Xin chào, ${username}`);
 
-        const encryptedUserId = CryptoJS.AES.encrypt(
-          data.user_id.toString(),
+      // 5. MÃ HÓA user_id và LƯU vào localStorage vẫn giữ nguyên ko dựng jwt
+      const encryptedUserId = CryptoJS.AES.encrypt(
+          result.user_id.toString(), // Lấy user_id KHÔNG mã hóa từ Edge Function
           SECRET_KEY
-        ).toString();
-        localStorage.setItem("user_id", encryptedUserId); // Lưu user_id đã mã hóa
+      ).toString();
+      localStorage.setItem("user_id", encryptedUserId); 
 
-        navigate("/home");
-        setTimeout(() => window.location.reload(), 100); //load lai cac bien
-      } else {
-        alert("Sai tài khoản hoặc mật khẩu!");
-      }
-    }
-    signIn(username, password);
-  };
+      // 6. Điều hướng
+      navigate("/home");
+      setTimeout(() => window.location.reload(), 100); 
+  }
+  signIn(username, password);
+};
 
   return (
     <div className="login-page-card">

@@ -5,13 +5,10 @@ import CryptoJS from "crypto-js";
 import supabase from "../../database/supabase";
 import { startSpeechRecognition } from "../../frontend/speech";
 
-import { GoogleGenerativeAI } from "../../shared/lib/generativeAI";
-
-// 1. Khởi tạo Gemini với API Key
-const genAI = new GoogleGenerativeAI(process.env.REACT_APP_GOOGLE_API);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
 let user_id = 0;
+
+const SUPABASE_PROJECT_URL = 'https://nvbdupcoynrzkrwyhrjc.supabase.co';
+const GEMINI_PROXY_ENDPOINT = `${SUPABASE_PROJECT_URL}/functions/v1/gemini-proxy`;
 
 function Home() {
   const navigate = useNavigate();
@@ -207,39 +204,73 @@ function ChatWindow({session, messages, setMessages, sessionId}) {
       Nếu yêu cầu là vẽ biểu đồ dự đoán tài chính thì chart_type là "financial", nếu là vẽ biểu đồ dự đoán chi tiêu thì chart_type là "transactions", nếu không phải cả hai thì là null
       Yêu cầu: "${userMessage}"
       `;
+      const response = await fetch(GEMINI_PROXY_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        prompt,
+        model: "gemini-2.5-flash"
+      })
+    });
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const jsonString = response
-        .text()
-        .replace(/```json/g, "")
-        .replace(/```/g, "")
-        .trim();
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || 'API call failed');
+    }
+
+    const jsonString = data.response
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+
       return JSON.parse(jsonString);
     } catch (error) {
       console.error("Lỗi phân tích ý định:", error);
       return {
         is_prediction_request: false,
-        response_message: "Xin lỗi, tôi không hiểu yêu cầu của bạn",
+        response_message: error.message || "Xin lỗi, tôi không hiểu yêu cầu của bạn.",
       };
     }
   }
+async function handleGoogleChat(userQuestion, questionHistory, answerHistory, transactions, income) {
+  const prompt = `
+Dữ liệu chi tiêu: ${transactions}
+Dữ liệu thu nhập: ${income}
+Lịch sử câu hỏi trước đó ${questionHistory}
+Lịch sử câu trả lời trước đó ${answerHistory}
 
-  async function handleGoogleChat(userQuestion, questionHistory, answerHistory) {
-    const prompt = `
-  Dữ liệu chi tiêu: ${transactions}
-  Dữ liệu thu nhập: ${income}
-  Lịch sử câu hỏi trước đó ${questionHistory}
-  Lịch sử câu trả lời trước đó ${answerHistory}
+Câu hỏi: "${userQuestion}"
+→ Hãy tổng hợp và trả lời bằng tiếng Việt.
+  `;
 
-  Câu hỏi: "${userQuestion}"
-  → Hãy tổng hợp và trả lời bằng tiếng Việt.
-`;
+  try {
+    // Gọi Edge Function
+    const response = await fetch(GEMINI_PROXY_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        prompt,
+        model: "gemini-2.5-flash"
+      })
+    });
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text().replace(/\*+/g, "\n").trim();
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || 'API call failed');
+    }
+
+    return data.response.replace(/\*+/g, "\n").trim();
+  } catch (error) {
+    console.error("Lỗi khi gọi Gemini:", error);
+    return "Xin lỗi, tôi gặp sự cố khi xử lý câu hỏi của bạn.";
   }
+}
 
   useEffect(() => {
     async function getUserData() {
@@ -319,7 +350,14 @@ function ChatWindow({session, messages, setMessages, sessionId}) {
     } else {
       // Giả lập phản hồi từ bot (có thể thay bằng API call)
       setTimeout(async () => {
-        let chatbotAnswer = await handleGoogleChat(text, questionHistory, answerHistory);
+        //let chatbotAnswer = await handleGoogleChat(text, questionHistory, answerHistory);
+        let chatbotAnswer = await handleGoogleChat(
+          text, 
+          questionHistory, 
+          answerHistory,
+          transactions,  // thêm tham số này
+          income        // thêm tham số này
+        );
         setAnswerHistory(chatbotAnswer);
       
         setMessages((prev) => {
@@ -564,6 +602,7 @@ function AiPredictTransactions({ periods, message }) {
   useEffect(() => {
     async function getPredictions() {
       try {
+        console.log('Fetching transaction predictions for user_id:', user_id, 'periods:', periods);
         const response = await fetch(
           `http://localhost:5000/predict/transactions?user_id=${user_id}&periods=${periods}&full_data=${"false"}`
         );
@@ -579,7 +618,7 @@ function AiPredictTransactions({ periods, message }) {
           setErrorMessage(null);
         }
       } catch (error) {
-        console.error("Lỗi khi lấy dự đoán:", error);
+        console.error("Lỗi khi lấy dự đoán:", user_id, periods, error);
       }
     }
     getPredictions();
