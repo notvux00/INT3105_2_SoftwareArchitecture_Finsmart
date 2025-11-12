@@ -9,6 +9,7 @@ const corsHeaders = {
 
 serve(async (req) => {
   // Handle CORS
+  // that ra cai nay dung _shared cung dc
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
