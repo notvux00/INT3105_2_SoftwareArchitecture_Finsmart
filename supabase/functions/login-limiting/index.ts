@@ -28,11 +28,15 @@ const redis = new Redis({
 // Hàm Rate Limiting (3 lần/2 phút, dựa trên IP)
 async function checkRateLimit(ipAddress: string): Promise<number> {
     const key = `ip_limit:${ipAddress}`;
-    const WINDOW_SECONDS = 120; // 2 phút
+    const WINDOW_SECONDS = 180; // 3 phút
 
     // Sử dụng lệnh INCR và EXPIRE
     const attempts = await redis.incr(key) as number; 
-    if (attempts === 1) await redis.expire(key, WINDOW_SECONDS); 
+    
+    const ttl = await redis.ttl(key) as number;
+    if (ttl === -1) {
+        await redis.expire(key, WINDOW_SECONDS);
+    }
     return attempts;
 }
 
