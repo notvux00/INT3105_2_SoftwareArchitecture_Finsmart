@@ -6,6 +6,9 @@ import supabase from "../../database/supabase";
 import bcrypt from "bcryptjs";
 
 
+const SUPABASE_PROJECT_URL = 'https://nvbdupcoynrzkrwyhrjc.supabase.co';
+const EDGE_URL = `${SUPABASE_PROJECT_URL}/functions/v1/register-limiting`;
+
 function RegisterPage() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -47,42 +50,29 @@ function RegisterPage() {
 
   async function handleSignUp(email, password, username, fullName, dob, phone) {
 
-    const { data: existingUser, error: checkError } = await supabase
-    .from("users")
-    .select("user_id")
-    .eq("user_name", username)
-    .single();
+    //fetch đến edge function
+    const response = await fetch(EDGE_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`
+            },
+        body: JSON.stringify({ email, password, username, fullName, dob, phone }),
+    });
+    
+    const result = await response.json();
 
-  if (existingUser) {
-    alert("Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.");
-    return;
-  }
-    // Băm mật khẩu với bcryptjs (10 rounds)
-    const saltRounds = 10;
-    const passwordHash = await bcrypt.hash(password, saltRounds);
-  
-    // Lưu user vào Supabase
-    const { data, error } = await supabase.from("users").insert([
-      {
-        email: email,
-        password_hash: passwordHash,
-        user_name: username,
-        full_name: fullName,
-        date_of_birth: dob,
-        phone_number: phone,
-      },
-    ]);
-  
-    if (error) {
-      console.error("❌ Đăng ký thất bại:", error.message);
-      alert("Đăng ký thất bại");
-    } else {
-  
-      alert("✅ Đăng ký thành công!");
-      createWallet(username);
+    // 3. lỗi từ edge function
+    if (response.status !== 200) {
+        alert(result.error); 
+        return;
     }
+  
+    alert("bú, đã đăng ký thành công!");
+    createWallet(username);
+    navigate("/login");
+    setTimeout(() => window.location.reload(), 100); 
   }
-
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -97,6 +87,12 @@ function RegisterPage() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+
+    if (formData.password !== formData.confirmPassword) {
+        alert("Mật khẩu xác nhận không khớp!");
+        return;
+    }
+
     await handleSignUp(
       formData.email,
       formData.password,
