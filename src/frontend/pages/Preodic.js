@@ -236,7 +236,6 @@ function Preodic() {
 
     switch (frequency) {
       case "3 phút":
-        date = new Date(); // Dùng thời gian hiện tại
         date.setMinutes(date.getMinutes() + 3);
         break;
       case "Hàng ngày":
@@ -257,84 +256,6 @@ function Preodic() {
     }
 
     return date.toISOString(); // Trả về cả ngày và giờ
-  };
-
-  const processPeriodicTransactions = async () => {
-    const nowISO = new Date().toISOString(); // Lấy cả giờ phút hiện tại
-
-    // Lấy danh sách các định kỳ cần xử lý
-    const { data: periodicList, error } = await supabase
-      .from("preodic")
-      .select("*")
-      .lte("next_execution", nowISO) // Ngày thực hiện <= hôm nay
-      .eq("is_active", true);
-
-    if (error) {
-      console.error("Lỗi khi lấy danh sách định kỳ:", error);
-      return;
-    }
-
-    for (const item of periodicList) {
-      // Kiểm tra số dư ví
-      const { data: wallet, error: walletError } = await supabase
-        .from("wallets")
-        .select("balance")
-        .eq("wallet_id", item.wallet_id)
-        .single();
-
-      if (walletError || wallet.balance < item.amount) {
-        // Nếu không đủ tiền, đánh dấu định kỳ là lỗi
-        await supabase
-          .from("preodic")
-          .update({ is_active: false })
-          .eq("id", item.id);
-        continue;
-      }
-
-      // Trừ tiền từ ví
-      const newBalance = wallet.balance - item.amount;
-      await supabase
-        .from("wallets")
-        .update({ balance: newBalance })
-        .eq("wallet_id", item.wallet_id);
-
-      // Ghi log giao dịch
-      await supabase.from("transactions").insert([
-        {
-          created_at: new Date().toISOString(),
-          user_id: user_id,
-          wallet_id: item.wallet_id,
-          category: item.name_preodic || item.name, // lấy tên định kỳ
-          amount: item.amount,
-          note: `Gia hạn định kỳ ${item.name_preodic || item.name}`,
-        },
-      ]);
-
-      // Cập nhật next_execution cho lần tiếp theo
-      const nextExec = calculateNextExecution(
-        item.next_execution,
-        item.frequency
-      );
-      if (!nextExec) {
-        await supabase
-          .from("preodic")
-          .update({ is_active: false })
-          .eq("id", item.id);
-        continue;
-      }
-      await supabase
-        .from("preodic")
-        .update({ next_execution: nextExec })
-        .eq("id", item.id);
-
-      if (new Date(item.endDate) < new Date()) {
-        await supabase
-          .from("preodic")
-          .update({ is_active: false })
-          .eq("id", item.id);
-        continue;
-      }
-    }
   };
 
   const [filterStatus, setFilterStatus] = useState("all"); // 'all', 'active', 'inactive'
@@ -418,18 +339,6 @@ function Preodic() {
     };
     fetchPeriodicData();
   }, [user_id]);
-
-  useEffect(() => {
-    // Chạy lần đầu khi component mount
-    processPeriodicTransactions();
-
-    // Cài đặt interval kiểm tra mỗi ngày
-    const interval = setInterval(() => {
-      processPeriodicTransactions();
-    }, 24 * 60 * 60 * 1000); // 24 giờ
-
-    return () => clearInterval(interval);
-  }, []);
 
   // Trong useEffect hoặc sau khi fetch periodicData:
   useEffect(() => {
