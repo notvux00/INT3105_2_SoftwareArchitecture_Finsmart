@@ -16,7 +16,7 @@ const SERVICE_KEY = Deno.env.get('SERVICE_KEY')!;
 const UPSTASH_REDIS_URL = Deno.env.get('REDIS_REST_URL')!;
 const UPSTASH_REDIS_TOKEN = Deno.env.get('REDIS_REST_TOKEN')!;
 
-const MAX_ATTEMPTS = 5;
+const MAX_ATTEMPTS = 10;
 
 // Khởi tạo Supabase Admin Client và Upstash Redis
 const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_KEY);
