@@ -1,4 +1,5 @@
 import "./Statistic.css";
+import { statisticRepository } from '../../entities/statistic/api/statisticRepository';
 import { useNavigate } from "react-router-dom";
 import React, { useState, useEffect } from "react";
 import CryptoJS from "crypto-js";
@@ -54,209 +55,95 @@ function Statistic() {
   }, [pieFilter, barFilter, lineFilter]);
 
   const fetchStatistic = async () => {
-    if (!user_id) return;
+      if (!user_id) return;
 
-    const expenseCategories = [
-      "ăn uống",
-      "mua sắm",
-      "sinh hoạt",
-      "giải trí",
-      "di chuyển",
-      "học tập",
-      "thể thao",
-      "công việc",
-      "khác",
-    ];
+      try {
+        // --- 1. Pie Chart (Category) ---
+        // Gọi trực tiếp vào View đã tạo ở Bước 1
+        const { data: categoryData, error: catError } = await supabase
+          .from('view_expenses_by_category') 
+          .select('category, total_amount')
+          .eq('user_id', user_id);
 
-    // Pie chart (expense by category)
-    let expenseQuery = supabase
-      .from("transactions")
-      .select("category, amount, created_at")
-      .eq("user_id", user_id);
-    if (pieFilter.from)
-      expenseQuery = expenseQuery.gte(
-        "created_at",
-        pieFilter.from.toISOString()
-      );
-    if (pieFilter.to) {
-      const endOfDay = new Date(pieFilter.to);
-      endOfDay.setHours(23, 59, 59, 999); // ✅ bao gồm cả ngày đó
-      expenseQuery = expenseQuery.lte("created_at", endOfDay.toISOString());
-    }
-    const { data: expenseData, error: expenseError } = await expenseQuery;
-    if (expenseError)
-      return console.error("Lỗi lấy dữ liệu chi tiêu:", expenseError);
+        if (catError) throw catError;
 
-    const categorySummary = {};
-    expenseData.forEach((item) => {
-      const normalizedCategory = item.category?.toLowerCase() || "";
-      const matchedCategory = expenseCategories.find(
-        (cat) => cat.toLowerCase() === normalizedCategory
-      );
-    
-      const cat = matchedCategory || "Khác";
-      categorySummary[cat] = (categorySummary[cat] || 0) + item.amount;
-    });
-    
-    setPieData({
-      labels: Object.keys(categorySummary),
-      datasets: [
-        {
-          label: "Tổng chi tiêu",
-          data: Object.values(categorySummary),
-          backgroundColor: [
-            "#ff6384",
-            "#36a2eb",
-            "#ffce56",
-            "#4bc0c0",
-            "#9966ff",
-            "#ff9f40",
-            "#8bc34a",
-            "#e91e63",
-            "#607d8b",
+        // Xử lý dữ liệu cho ChartJS (Code ngắn gọn hơn nhiều do DB đã tính tổng)
+        const labels = categoryData.map(item => item.category);
+        const dataValues = categoryData.map(item => item.total_amount);
+
+        setPieData({
+          labels: labels,
+          datasets: [{
+            label: "Tổng chi tiêu",
+            data: dataValues,
+            backgroundColor: [
+              "#ff6384", "#36a2eb", "#ffce56", "#4bc0c0", 
+              "#9966ff", "#ff9f40", "#8bc34a", "#e91e63", "#607d8b"
+            ],
+          }],
+        });
+
+        // --- 2. Bar & Line Chart (Monthly) ---
+        let monthlyQuery = supabase
+          .from('view_monthly_stats')
+          .select('*')
+          .eq('user_id', user_id)
+          .order('month', { ascending: true });
+
+        // Áp dụng bộ lọc thời gian nếu có (lọc trên cột 'month' của View)
+        if (barFilter.from) monthlyQuery = monthlyQuery.gte('month', barFilter.from.toISOString());
+        if (barFilter.to) monthlyQuery = monthlyQuery.lte('month', barFilter.to.toISOString());
+
+        const { data: monthlyData, error: monthError } = await monthlyQuery;
+        if (monthError) throw monthError;
+
+        // Chuẩn bị dữ liệu hiển thị
+        const months = monthlyData.map(item => {
+          // Format lại ngày tháng cho đẹp (VD: 2023-10)
+          return item.month.substring(0, 7); 
+        });
+        
+        // Bar Chart Data
+        setBarData({
+          labels: months,
+          datasets: [
+            {
+              label: "Thu nhập",
+              backgroundColor: "#77dd77",
+              data: monthlyData.map(item => item.total_income),
+            },
+            {
+              label: "Chi tiêu",
+              backgroundColor: "#ef5350",
+              data: monthlyData.map(item => item.total_expense),
+            },
           ],
-        },
-      ],
-    });
+        });
 
-    // Bar chart (income & expense by month)
-    let incomeQuery = supabase
-      .from("income")
-      .select("amount, created_at")
-      .eq("user_id", user_id);
-    if (barFilter.from)
-      incomeQuery = incomeQuery.gte("created_at", barFilter.from.toISOString());
-    if (barFilter.to) {
-      const endOfDay = new Date(barFilter.to);
-      endOfDay.setHours(23, 59, 59, 999);
-      incomeQuery = incomeQuery.lte("created_at", endOfDay.toISOString());
-    }
+        // Line Chart Data (Số dư tích lũy)
+        // Nếu muốn số dư cộng dồn theo thời gian thực tế, ta cần tính lũy kế
+        let accumulatedBalance = 0;
+        const balanceData = monthlyData.map(item => {
+            accumulatedBalance += item.net_balance;
+            return accumulatedBalance;
+        });
 
-    let expenseQuery2 = supabase
-      .from("transactions")
-      .select("amount, created_at")
-      .eq("user_id", user_id);
-    if (barFilter.from)
-      expenseQuery2 = expenseQuery2.gte(
-        "created_at",
-        barFilter.from.toISOString()
-      );
-    if (barFilter.to) {
-      const endOfDay = new Date(barFilter.to);
-      endOfDay.setHours(23, 59, 59, 999);
-      expenseQuery2 = expenseQuery2.lte("created_at", endOfDay.toISOString());
-    }
+        setLineData({
+          labels: months,
+          datasets: [
+            {
+              label: "Số dư ví (Tích lũy)",
+              data: balanceData,
+              borderColor: "#388e3c",
+              backgroundColor: "#388e3c",
+              fill: false,
+            },
+          ],
+        });
 
-    const { data: incomeData, error: incomeError } = await incomeQuery;
-    const { data: expenseData2, error: expenseError2 } = await expenseQuery2;
-    if (incomeError || expenseError2)
-      return console.error(
-        "Lỗi dữ liệu thu/chi:",
-        incomeError || expenseError2
-      );
-
-    const groupByMonth = (data) => {
-      const result = {};
-      data.forEach((item) => {
-        const date = new Date(item.created_at);
-        const key = `${date.getFullYear()}-${(date.getMonth() + 1)
-          .toString()
-          .padStart(2, "0")}`;
-        result[key] = (result[key] || 0) + item.amount;
-      });
-      return result;
-    };
-
-    const incomeByMonth = groupByMonth(incomeData);
-    const expenseByMonth = groupByMonth(expenseData2);
-    const allMonths = Array.from(
-      new Set([...Object.keys(incomeByMonth), ...Object.keys(expenseByMonth)])
-    ).sort();
-
-    setBarData({
-      labels: allMonths,
-      datasets: [
-        {
-          label: "Thu nhập",
-          backgroundColor: "#77dd77",
-          data: allMonths.map((m) => incomeByMonth[m] || 0),
-        },
-        {
-          label: "Chi tiêu",
-          backgroundColor: "#ef5350",
-          data: allMonths.map((m) => expenseByMonth[m] || 0),
-        },
-      ],
-    });
-
-    // Line chart (balance fluctuation)
-    let incomeQueryLine = supabase
-      .from("income")
-      .select("amount, created_at")
-      .eq("user_id", user_id);
-    if (lineFilter.from)
-      incomeQueryLine = incomeQueryLine.gte(
-        "created_at",
-        lineFilter.from.toISOString()
-      );
-    if (lineFilter.to)
-      incomeQueryLine = incomeQueryLine.lte(
-        "created_at",
-        lineFilter.to.toISOString()
-      );
-
-    let expenseQueryLine = supabase
-      .from("transactions")
-      .select("amount, created_at")
-      .eq("user_id", user_id);
-    if (lineFilter.from)
-      expenseQueryLine = expenseQueryLine.gte(
-        "created_at",
-        lineFilter.from.toISOString()
-      );
-    if (lineFilter.to)
-      expenseQueryLine = expenseQueryLine.lte(
-        "created_at",
-        lineFilter.to.toISOString()
-      );
-
-    const { data: incomeDataLine, error: incomeErrorLine } =
-      await incomeQueryLine;
-    const { data: expenseDataLine, error: expenseErrorLine } =
-      await expenseQueryLine;
-    if (incomeErrorLine || expenseErrorLine)
-      return console.error(
-        "Lỗi dữ liệu thu/chi line:",
-        incomeErrorLine || expenseErrorLine
-      );
-
-    const incomeByMonthLine = groupByMonth(incomeDataLine);
-    const expenseByMonthLine = groupByMonth(expenseDataLine);
-    const allMonthsLine = Array.from(
-      new Set([
-        ...Object.keys(incomeByMonthLine),
-        ...Object.keys(expenseByMonthLine),
-      ])
-    ).sort();
-
-    let balance = 0;
-    const balanceMap = {};
-    allMonthsLine.forEach((m) => {
-      balance += (incomeByMonthLine[m] || 0) - (expenseByMonthLine[m] || 0);
-      balanceMap[m] = balance;
-    });
-    setLineData({
-      labels: allMonthsLine,
-      datasets: [
-        {
-          label: "Số dư ví",
-          data: allMonthsLine.map((m) => balanceMap[m]),
-          borderColor: "#388e3c",
-          backgroundColor: "#388e3c",
-          fill: false,
-        },
-      ],
-    });
+      } catch (error) {
+        console.error("Lỗi tải dữ liệu thống kê:", error.message);
+      }
   };
 
   // Popup filter component
