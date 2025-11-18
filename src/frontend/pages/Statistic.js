@@ -58,8 +58,8 @@ function Statistic() {
       if (!user_id) return;
 
       try {
-        // --- 1. Pie Chart (Category) ---
-        // Gọi trực tiếp vào View đã tạo ở Bước 1
+        // Pie Chart
+        // Gọi trực tiếp vào View "view_expenses_by_category"
         const { data: categoryData, error: catError } = await supabase
           .from('view_expenses_by_category') 
           .select('category, total_amount')
@@ -67,7 +67,7 @@ function Statistic() {
 
         if (catError) throw catError;
 
-        // Xử lý dữ liệu cho ChartJS (Code ngắn gọn hơn nhiều do DB đã tính tổng)
+        // Xử lý dữ liệu cho ChartJS
         const labels = categoryData.map(item => item.category);
         const dataValues = categoryData.map(item => item.total_amount);
 
@@ -83,7 +83,7 @@ function Statistic() {
           }],
         });
 
-        // --- 2. Bar & Line Chart (Monthly) ---
+        // Bar & Line Chart
         let monthlyQuery = supabase
           .from('view_monthly_stats')
           .select('*')

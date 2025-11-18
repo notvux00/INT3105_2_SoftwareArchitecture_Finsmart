@@ -1,4 +1,4 @@
-import { supabase } from '../../../shared'; // Import từ shared layer
+import { supabase } from '../../../shared';
 
 export const statisticRepository = {
   // Lấy dữ liệu chi tiêu theo danh mục từ SQL View
@@ -7,10 +7,6 @@ export const statisticRepository = {
       .from('view_expenses_by_category') // Gọi vào View thay vì Table
       .select('*')
       .eq('user_id', userId);
-
-    // Lưu ý: View group sẵn toàn bộ thời gian, nếu cần lọc ngày cụ thể 
-    // thì View cần sửa để không group cứng hoặc lọc ở bước WHERE của View.
-    // Tuy nhiên, để tối ưu đơn giản theo Nhiệm vụ 5, ta lấy dữ liệu tổng quan trước.
     
     const { data, error } = await query;
     if (error) throw error;

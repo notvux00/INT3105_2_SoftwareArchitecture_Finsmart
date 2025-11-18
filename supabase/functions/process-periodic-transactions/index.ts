@@ -1,13 +1,11 @@
-// supabase/functions/process-periodic-transactions/index.ts
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-// ĐÂY LÀ DÒNG ĐÃ SỬA: dùng 'deno.land'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 // Định nghĩa CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 };
-// Hàm này được sao chép từ Preodic.js
+// Hàm bên trong Preodic để tính ngày thực thi tiếp theo
 const calculateNextExecution = (startDate, frequency)=>{
   const now = new Date();
   let date = new Date(startDate);
@@ -37,12 +35,12 @@ const calculateNextExecution = (startDate, frequency)=>{
   }
   return date.toISOString();
 };
-// Hàm này là phiên bản backend của processPeriodicTransactions
+// Phiên bản backend của processPeriodicTransactions
 async function processPeriodicTransactions(supabaseAdmin) {
   const nowISO = new Date().toISOString();
   let processedCount = 0;
   let errorCount = 0;
-  // 1. Lấy các task định kỳ đã đến hạn
+  // Lấy các task định kỳ đã đến hạn
   const { data: periodicList, error } = await supabaseAdmin.from("preodic").select("*").lte("next_execution", nowISO) // Task đã đến hạn
   .eq("is_active", true); // Task đang hoạt động
   if (error) {
@@ -60,7 +58,7 @@ async function processPeriodicTransactions(supabaseAdmin) {
   console.log(`Tìm thấy ${periodicList.length} task định kỳ cần xử lý...`);
   for (const item of periodicList){
     try {
-      // 2. Kiểm tra số dư ví
+      // Kiểm tra số dư ví
       const { data: wallet, error: walletError } = await supabaseAdmin.from("wallets").select("balance").eq("wallet_id", item.wallet_id).single();
       if (walletError || wallet.balance < item.amount) {
         console.warn(`Không đủ số dư cho task ${item.name_preodic} (ID: ${item.id}). Tạm dừng task.`);
@@ -71,12 +69,12 @@ async function processPeriodicTransactions(supabaseAdmin) {
         errorCount++;
         continue;
       }
-      // 3. Trừ tiền từ ví
+      // Trừ tiền từ ví
       const newBalance = wallet.balance - item.amount;
       await supabaseAdmin.from("wallets").update({
         balance: newBalance
       }).eq("wallet_id", item.wallet_id);
-      // 4. Ghi log giao dịch (thêm vào bảng transactions)
+      // Ghi log giao dịch (thêm vào bảng transactions)
       await supabaseAdmin.from("transactions").insert([
         {
           created_at: new Date().toISOString(),
@@ -87,7 +85,7 @@ async function processPeriodicTransactions(supabaseAdmin) {
           note: `Gia hạn định kỳ: ${item.name_preodic}`
         }
       ]);
-      // 5. Cập nhật ngày thực thi tiếp theo (next_execution)
+      // Cập nhật ngày thực thi tiếp theo (next_execution)
       const nextExec = calculateNextExecution(item.next_execution, item.frequency);
       // Kiểm tra xem đã hết hạn chưa
       if (new Date(item.endDate) < new Date()) {
@@ -122,7 +120,7 @@ serve(async (req)=>{
     });
   }
   try {
-    // 1. Bảo mật: Chỉ cho phép Cron Job gọi
+    // Bảo mật: Chỉ cho phép Cron Job gọi
     const authHeader = req.headers.get('Authorization');
     if (authHeader !== `Bearer ${Deno.env.get('CRON_SECRET')}`) {
       return new Response(JSON.stringify({
@@ -135,11 +133,11 @@ serve(async (req)=>{
         }
       });
     }
-    // 2. Tạo Admin Client (dùng Service Role Key)
+    // Tạo Admin Client (dùng Service Role Key)
     const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL'), Deno.env.get('SERVICE_KEY'));
-    // 3. Chạy logic nghiệp vụ
+    // Chạy logic nghiệp vụ
     const result = await processPeriodicTransactions(supabaseAdmin);
-    // 4. Trả về kết quả
+    // Trả về kết quả
     return new Response(JSON.stringify(result), {
       headers: {
         ...corsHeaders,
