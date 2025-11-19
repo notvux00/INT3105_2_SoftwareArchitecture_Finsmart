@@ -105,13 +105,14 @@ nav {
   border-radius: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
   min-height: 320px;
-  min-width: 340px;
   height: 340px;
   width: 100%;
   box-sizing: border-box;
   padding: 20px 24px 24px 24px;
   overflow: hidden;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .statistic-cell canvas,
@@ -131,7 +132,7 @@ nav {
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.07);
   margin-top: 32px;
   padding: 24px 36px 32px 36px;
-  height: 320px;
+  height: 380px;
   min-width: 0;
   overflow: hidden;
   display: flex;
@@ -213,14 +214,23 @@ nav {
   padding-bottom: 0;
 }
 
+.chart-content {
+  flex: 1; /* Chiếm toàn bộ không gian còn lại sau header */
+  min-height: 0; /* Quan trọng: Để chart co nhỏ được khi container nhỏ */
+  position: relative; /* Để chart.js canvas định vị đúng */
+  width: 100%;
+  display: flex; /* Căn giữa chart */
+  align-items: center;
+  justify-content: center;
+}
+
 .chart-header {
+  flex-shrink: 0;
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 0 8px 0;
-  margin-bottom: 12px;
-  box-sizing: border-box;
+  padding-bottom: 10px;
 }
 
 .chart-title {

@@ -9,4 +9,10 @@ export const QUERY_KEYS = {
 
   // Key cho Hạn mức chi tiêu
   LIMITS: (userId) => ["limits", userId],
+
+  STATISTIC: {
+    PIE: (userId, filter) => ["statistic", "pie", userId, filter],
+    BAR: (userId, filter) => ["statistic", "bar", userId, filter],
+    LINE: (userId, filter) => ["statistic", "line", userId, filter],
+  },
 };

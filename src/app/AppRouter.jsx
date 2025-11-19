@@ -10,6 +10,7 @@ import ProtectedRoute from "../shared/ui/ProtectedRoute";
 import HomePage from "../pages/HomePage";
 import TransactionsPage from "../pages/TransactionsPage";
 import ProfilePage from "../pages/ProfilePage";
+import StatisticPage from "../pages/StatisticPage";
 
 // Import legacy pages (will be refactored later)
 import Login from "../frontend/pages/LandingPage";
@@ -22,7 +23,6 @@ import ForgotPasswordPage from "../frontend/pages/ForgotPasswordPage";
 import UpdateProfile from "../frontend/pages/UpdateProfile";
 import Economical from "../frontend/pages/Economical";
 import Preodic from "../frontend/pages/Preodic";
-import Statistic from "../frontend/pages/Statistic";
 
 function AppRouter() {
   return (
@@ -57,7 +57,7 @@ function AppRouter() {
           path="/statistic"
           element={
             <ProtectedRoute>
-              <Statistic />
+              <StatisticPage />
             </ProtectedRoute>
           }
         />
