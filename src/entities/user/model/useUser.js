@@ -1,45 +1,33 @@
 /**
  * User entity model layer
- * Custom hooks for user data management
+ * Uses React Query for Caching User Data
  */
-import { useState, useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { userRepository } from "../api/userRepository";
+import { QUERY_KEYS } from "../../../shared/config/queryKeys";
 
 export const useUser = (userId) => {
-  const [username, setUsername] = useState("");
-  const [balance, setBalance] = useState(0);
-  const [loading, setLoading] = useState(true);
-
-  const fetchUserData = useCallback(async () => {
-    if (!userId) return;
-
-    try {
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: QUERY_KEYS.USER(userId), // Key: ['user', userId]
+    queryFn: async () => {
       const [userData, walletData] = await Promise.all([
         userRepository.fetchUser(userId),
         userRepository.fetchWallet(userId),
       ]);
 
-      if (userData) {
-        setUsername(userData.full_name);
-      }
-      if (walletData) {
-        setBalance(walletData.balance);
-      }
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    fetchUserData();
-  }, [fetchUserData]);
+      return {
+        username: userData?.full_name || "",
+        balance: walletData?.balance || 0,
+      };
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000, // Cache 5 phút
+  });
 
   return {
-    username,
-    balance,
-    loading,
-    refetch: fetchUserData,
+    username: data?.username || "",
+    balance: data?.balance || 0,
+    loading: isLoading,
+    refetch,
   };
 };
