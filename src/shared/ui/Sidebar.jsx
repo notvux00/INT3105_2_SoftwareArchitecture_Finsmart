@@ -2,8 +2,8 @@
  * Shared UI component - Sidebar
  * Reusable sidebar navigation component
  */
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from "react";
+import { useNavigate } from "react-router-dom";
 
 const Sidebar = ({ currentPath }) => {
   const navigate = useNavigate();
@@ -17,13 +17,45 @@ const Sidebar = ({ currentPath }) => {
   const handleStatistic = () => navigate("/statistic");
 
   const navItems = [
-    { path: "/home", label: "Trang chủ", icon: "Dashboard.png", handler: handleHome },
-    { path: "/transaction", label: "Giao dịch", icon: "AddTransaction.png", handler: handleTransaction },
-    { path: "/preodic", label: "Định kỳ", icon: "preodic-icon.png", handler: handlePreodic },
-    { path: "/statistic", label: "Thống kê", icon: "statistic.png", handler: handleStatistic },
-    { path: "/economical", label: "Tiết kiệm", icon: "economy-icon.png", handler: handleEconomical },
+    {
+      path: "/home",
+      label: "Trang chủ",
+      icon: "Dashboard.png",
+      handler: handleHome,
+    },
+    {
+      path: "/transaction",
+      label: "Giao dịch",
+      icon: "AddTransaction.png",
+      handler: handleTransaction,
+    },
+    {
+      path: "/preodic",
+      label: "Định kỳ",
+      icon: "preodic-icon.png",
+      handler: handlePreodic,
+    },
+    {
+      path: "/statistic",
+      label: "Thống kê",
+      icon: "statistic.png",
+      handler: handleStatistic,
+    },
+    {
+      path: "/economical",
+      label: "Tiết kiệm",
+      icon: "economy-icon.png",
+      handler: handleEconomical,
+    },
     { path: "/ai", label: "Chatbot", icon: "AI.png", handler: handleAI },
-    { path: "/profile", label: "Thông tin cá nhân", icon: "Logout.png", handler: handleProfile },
+    // Thêm className: 'user' để CSS biết đây là nút cần đẩy xuống đáy
+    {
+      path: "/profile",
+      label: "Thông tin cá nhân",
+      icon: "Logout.png",
+      handler: handleProfile,
+      className: "user",
+    },
   ];
 
   return (
@@ -36,7 +68,10 @@ const Sidebar = ({ currentPath }) => {
         {navItems.map((item) => (
           <button
             key={item.path}
-            className={`nav-btn ${currentPath === item.path ? 'active' : ''}`}
+            // Cập nhật dòng này để nhận thêm class 'user' nếu có
+            className={`nav-btn ${item.className || ""} ${
+              currentPath === item.path ? "active" : ""
+            }`}
             onClick={item.handler}
           >
             <img src={`Soucre/${item.icon}`} alt={item.label} />
