@@ -1,73 +1,58 @@
 /**
  * Transaction-add feature model layer
- * Custom hooks for transaction creation logic
+ * Refactored to use React Query Mutation
  */
-import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addTransactionAPI } from "../api/addTransaction";
 import { userRepository } from "../../../entities/user";
 import { TRANSACTION_TYPES } from "../../../shared/config";
+import { QUERY_KEYS } from "../../../shared/config/queryKeys";
 
 export const useAddTransaction = (userId) => {
   const navigate = useNavigate();
-  const [limits, setLimits] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
 
-  const fetchLimits = useCallback(async () => {
-    try {
-      const data = await addTransactionAPI.fetchLimits(userId);
-      setLimits(data);
-    } catch (error) {
-      console.error("Error fetching limits:", error.message);
-    }
-  }, [userId]);
+  // 1. Lấy danh sách Hạn mức (Limits) bằng useQuery
+  // Thay thế useEffect thủ công
+  const { data: limits = [] } = useQuery({
+    queryKey: QUERY_KEYS.LIMITS(userId),
+    queryFn: () => addTransactionAPI.fetchLimits(userId),
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000, // Cache 5 phút
+  });
 
-  useEffect(() => {
-    if (userId) {
-      fetchLimits();
-    }
-  }, [userId, fetchLimits]);
+  // 2. Mutation: Xử lý logic Thêm giao dịch
+  const mutation = useMutation({
+    mutationFn: async (transactionData) => {
+      if (!userId) throw new Error("Không xác thực được người dùng.");
 
-  const addTransaction = async (transactionData) => {
-    if (!userId) {
-      alert("Không xác thực được người dùng. Vui lòng đăng nhập lại.");
-      navigate("/login");
-      return;
-    }
+      const amountNumber = parseFloat(transactionData.amount);
 
-    const amountNumber = parseFloat(transactionData.amount);
+      // Validate dữ liệu
+      if (
+        !transactionData.amount ||
+        !transactionData.category ||
+        !transactionData.date
+      ) {
+        throw new Error(
+          "Vui lòng nhập đầy đủ số tiền, chọn hạng mục và ngày giao dịch."
+        );
+      }
+      if (isNaN(amountNumber) || amountNumber <= 0) {
+        throw new Error("Số tiền không hợp lệ. Vui lòng nhập số lớn hơn 0.");
+      }
+      const selectedDate = new Date(transactionData.date);
+      const currentDate = new Date();
+      if (selectedDate > currentDate) {
+        throw new Error("Ngày giao dịch không hợp lệ. Vui lòng chọn lại ngày.");
+      }
 
-    if (
-      !transactionData.amount ||
-      !transactionData.category ||
-      !transactionData.date
-    ) {
-      alert("Vui lòng nhập đầy đủ số tiền, chọn hạng mục và ngày giao dịch.");
-      return;
-    }
-
-    if (isNaN(amountNumber) || amountNumber <= 0) {
-      alert("Số tiền không hợp lệ. Vui lòng nhập số lớn hơn 0.");
-      return;
-    }
-
-    // Validate date
-    const selectedDate = new Date(transactionData.date);
-    const currentDate = new Date();
-    if (selectedDate > currentDate) {
-      alert("Ngày giao dịch không hợp lệ. Vui lòng chọn lại ngày.");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // Get wallet information
+      // Lấy thông tin ví
       const walletInfo = await userRepository.getWalletId(userId);
       const walletId = walletInfo.wallet_id;
       const currentBalance = walletInfo.balance;
 
-      // Prepare transaction data
       const finalTransactionData = {
         user_id: userId,
         wallet_id: walletId,
@@ -85,12 +70,12 @@ export const useAddTransaction = (userId) => {
       } else {
         newBalance = currentBalance - amountNumber;
 
-        // Check if balance is sufficient
+        // Kiểm tra số dư
         if (newBalance < 0) {
           throw new Error("Số dư không đủ để thực hiện giao dịch này.");
         }
 
-        // Handle limit updates if applicable
+        // Xử lý Hạn mức (Limit)
         if (transactionData.limitId) {
           const selectedLimit = limits.find(
             (limit) => limit.limit_id === transactionData.limitId
@@ -99,15 +84,13 @@ export const useAddTransaction = (userId) => {
           if (selectedLimit) {
             const newUsedAmount = (selectedLimit.used || 0) + amountNumber;
 
-            // Check if limit would be exceeded
             if (newUsedAmount > selectedLimit.limit_amount) {
-              alert(
-                `Hạn mức "${selectedLimit.limit_name}" đã vượt quá giới hạn ${selectedLimit.limit_amount}. Vui lòng chọn danh mục khác hoặc hạn mức khác`
+              throw new Error(
+                `Hạn mức "${selectedLimit.limit_name}" đã vượt quá giới hạn. Vui lòng chọn hạn mức khác.`
               );
-              return;
             }
 
-            // Update limit usage
+            // Cập nhật hạn mức
             await addTransactionAPI.updateLimitUsage(
               selectedLimit.limit_id,
               newUsedAmount
@@ -117,34 +100,45 @@ export const useAddTransaction = (userId) => {
         }
       }
 
-      // Add transaction to database
+      // Gọi API thêm giao dịch
       await addTransactionAPI.addTransaction(
         finalTransactionData,
         transactionType
       );
 
-      // Update wallet balance
+      // Cập nhật số dư ví
       await userRepository.updateWalletBalance(walletId, newBalance);
 
+      return true; // Trả về true nếu thành công
+    },
+
+    // CẬP NHẬT TỰ ĐỘNG
+    onSuccess: () => {
+      // 1. Báo cho hệ thống biết danh sách giao dịch đã thay đổi -> Home tự tải lại
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.TRANSACTIONS(userId),
+      });
+
+      // 2. Báo số dư ví đã thay đổi -> Home tự cập nhật số tiền
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER(userId) });
+
+      // 3. Báo hạn mức đã thay đổi (nếu có dùng)
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LIMITS(userId) });
+
       alert("Thêm giao dịch thành công.");
-      return true;
-    } catch (error) {
-      console.error("Lỗi khi xử lý giao dịch:", error.message || error);
-      alert(
-        `Đã xảy ra lỗi: ${
-          error.message || "Thêm giao dịch không thành công. Vui lòng thử lại."
-        }`
-      );
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
+      navigate("/home");
+    },
+    onError: (error) => {
+      console.error("Lỗi thêm giao dịch:", error);
+      alert(`Đã xảy ra lỗi: ${error.message}`);
+    },
+  });
 
   return {
     limits,
-    addTransaction,
-    loading,
-    refetchLimits: fetchLimits,
+    addTransaction: mutation.mutate, // UI sẽ gọi hàm này
+    loading: mutation.isPending, // Trạng thái đang xử lý
+    refetchLimits: () =>
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LIMITS(userId) }),
   };
 };
