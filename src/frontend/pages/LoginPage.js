@@ -7,7 +7,7 @@ import bcrypt from "bcryptjs";
 import CryptoJS from "crypto-js";
 
 const SECRET_KEY = process.env.REACT_APP_SECRET_KEY;
-const SUPABASE_PROJECT_URL = 'https://nvbdupcoynrzkrwyhrjc.supabase.co';
+const SUPABASE_PROJECT_URL = process.env.REACT_APP_SUPABASE_URL;
 
 function LoginPage() {
   const navigate = useNavigate();

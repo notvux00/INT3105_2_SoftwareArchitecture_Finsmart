@@ -7,7 +7,7 @@ import { startSpeechRecognition } from "../../frontend/speech";
 
 const SECRET_KEY = process.env.REACT_APP_SECRET_KEY;
 
-const SUPABASE_PROJECT_URL = 'https://nvbdupcoynrzkrwyhrjc.supabase.co';
+const SUPABASE_PROJECT_URL = process.env.REACT_APP_SUPABASE_URL;
 const GEMINI_PROXY_ENDPOINT = `${SUPABASE_PROJECT_URL}/functions/v1/gemini-proxy`;
 // Mảng để lưu trữ các hạng mục thu nhập và chi tiêu
 const incomeCategories = [

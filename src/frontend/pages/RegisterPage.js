@@ -6,7 +6,7 @@ import supabase from "../../database/supabase";
 import bcrypt from "bcryptjs";
 
 
-const SUPABASE_PROJECT_URL = 'https://nvbdupcoynrzkrwyhrjc.supabase.co';
+const SUPABASE_PROJECT_URL = process.env.REACT_APP_SUPABASE_URL;
 const EDGE_URL = `${SUPABASE_PROJECT_URL}/functions/v1/register-limiting`;
 
 function RegisterPage() {

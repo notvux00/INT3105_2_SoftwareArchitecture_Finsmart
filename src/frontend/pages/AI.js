@@ -7,7 +7,7 @@ import { startSpeechRecognition } from "../../frontend/speech";
 
 let user_id = 0;
 
-const SUPABASE_PROJECT_URL = 'https://nvbdupcoynrzkrwyhrjc.supabase.co';
+const SUPABASE_PROJECT_URL = process.env.REACT_APP_SUPABASE_URL;
 const GEMINI_PROXY_ENDPOINT = `${SUPABASE_PROJECT_URL}/functions/v1/gemini-proxy`;
 
 function Home() {

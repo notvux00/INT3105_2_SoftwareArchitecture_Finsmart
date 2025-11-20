@@ -5,7 +5,7 @@ import { userRepository } from "../../../entities/user";
 import { TRANSACTION_TYPES } from "../../../shared/config";
 import { QUERY_KEYS } from "../../../shared/config/queryKeys";
 
-const SUPABASE_PROJECT_URL = 'https://nvbdupcoynrzkrwyhrjc.supabase.co';
+const SUPABASE_PROJECT_URL = process.env.REACT_APP_SUPABASE_URL;
 const SAGA_FUNCTION_URL = `${SUPABASE_PROJECT_URL}/functions/v1/create-transaction-saga`;
 
 export const useAddTransaction = (userId) => {

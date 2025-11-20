@@ -12,7 +12,7 @@ import { incomeCategories, expenseCategories, TRANSACTION_TYPES } from "../share
 import { startSpeechRecognition } from "../frontend/speech";
 
 
-const SUPABASE_PROJECT_URL = 'https://nvbdupcoynrzkrwyhrjc.supabase.co';
+const SUPABASE_PROJECT_URL = process.env.REACT_APP_SUPABASE_URL;
 const GEMINI_PROXY_ENDPOINT = `${SUPABASE_PROJECT_URL}/functions/v1/gemini-proxy`;
 
 const TransactionsPage = () => {
