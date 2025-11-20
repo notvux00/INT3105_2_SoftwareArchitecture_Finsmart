@@ -186,15 +186,28 @@ nav {
   color: red;
 }
 
+/* File: src/frontend/pages/Home.css */
+
 .view-history {
-  text-align: center;
   display: block;
-  margin-top: 5px;
-  color: blue;
-  font-size: 14px;
-  text-decoration: underline;
-  font-weight: bold;
+  width: fit-content;           /* Độ rộng vừa đủ nội dung */
+  margin: 5px auto;             /* GIẢM MARGIN: Chỉ cách trên dưới 5px */
+  padding: 6px 16px;            /* GIẢM PADDING: Làm nút mỏng và ngắn lại */
+  background-color: #5c6bc0;
+  color: white;
+  font-size: 13px;              /* GIẢM CỠ CHỮ: Chữ nhỏ hơn một chút cho cân đối */
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 20px;          /* Bo tròn vừa phải */
+  box-shadow: 0 2px 4px rgba(92, 107, 192, 0.2); /* Bóng nhẹ hơn */
+  transition: all 0.3s ease;
   cursor: pointer;
+}
+
+.view-history:hover {
+  background-color: #3949ab;
+  transform: translateY(-1px);  /* Hiệu ứng nảy nhẹ hơn */
+  box-shadow: 0 4px 8px rgba(92, 107, 192, 0.3);
 }
 
 /* Biểu đồ thu chi */

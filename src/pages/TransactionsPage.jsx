@@ -1,9 +1,4 @@
-/**
- * TransactionsPage - Transaction management page
- * Layout-level component for adding and managing transactions
- */
 import React, { useState } from "react";
-// Import CSS styles for TransactionsPage layout and components
 import "../frontend/pages/Transaction.css";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../shared/hooks";
@@ -11,9 +6,21 @@ import { useAddTransaction } from "../features/transaction-add";
 import { incomeCategories, expenseCategories, TRANSACTION_TYPES } from "../shared/config";
 import { startSpeechRecognition } from "../frontend/speech";
 
-
 const SUPABASE_PROJECT_URL = process.env.REACT_APP_SUPABASE_URL;
 const GEMINI_PROXY_ENDPOINT = `${SUPABASE_PROJECT_URL}/functions/v1/gemini-proxy`;
+
+const formatDateTimeForInput = (isoString) => {
+  if (!isoString) {
+    // Nếu AI không trả về ngày, lấy giờ hiện tại theo múi giờ máy tính
+    const now = new Date();
+    // Trừ đi offset để lấy giờ local khi chuyển sang ISO
+    return new Date(now.getTime() - (now.getTimezoneOffset() * 60000))
+      .toISOString()
+      .slice(0, 16); // Cắt lấy yyyy-MM-ddThh:mm
+  }
+  // Nếu có chuỗi ISO (VD: 2025-04-13T21:41:00Z), cắt bỏ phần giây và múi giờ
+  return isoString.substring(0, 16);
+};
 
 const TransactionsPage = () => {
   const navigate = useNavigate();
@@ -48,7 +55,10 @@ const TransactionsPage = () => {
           setAmount(result.amount);
           setSelectCategory(result.category);
           setNote(result.note);
-          setDate(result.datetime);
+          
+          const formattedDate = formatDateTimeForInput(result.datetime);
+          setDate(formattedDate);
+
         } else {
           alert(result.response_message);
         }
@@ -104,33 +114,34 @@ Phân tích yêu cầu của người dùng bên dưới và trả về **duy nh
   "amount": number | null,
   "category": string | null,
   "note": string | null,
-  "response_message": string
-  "datetime": string | null,
+  "response_message": string,
+  "datetime": string | null
 }
 
 Yêu cầu của người dùng: "${userMessage}"
 `;
 
       const response = await fetch(GEMINI_PROXY_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        prompt,
-        model: "gemini-2.5-flash"
-      })
-    });
-    const data = await response.json();
-    
-    if (!data.success) {
-      throw new Error(data.error || 'API call failed');
-    }
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          prompt,
+          model: "gemini-2.5-flash"
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'API call failed');
+      }
 
-    const jsonString = data.response
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
+      const jsonString = data.response
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
+        .trim();
 
       return JSON.parse(jsonString);
     } catch (error) {
@@ -327,7 +338,7 @@ Yêu cầu của người dùng: "${userMessage}"
           <input
             type="datetime-local"
             className="date-picker"
-            value={date}
+            value={date || ""}
             onChange={(e) => setDate(e.target.value)}
           />
 
