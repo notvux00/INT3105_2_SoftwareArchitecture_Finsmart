@@ -30,9 +30,7 @@ serve(async (req) => {
 
     console.log(`[SAGA START] Transaction for User: ${user_id}, Type: ${type}, Amount: ${amount}`);
 
-    // ---------------------------------------------------------
     // BƯỚC 1: TẠO GIAO DỊCH (Transaction Record)
-    // ---------------------------------------------------------
     const tableName = type === 'thu' ? 'income' : 'transactions';
     const transactionPayload: any = {
       user_id,
@@ -58,9 +56,7 @@ serve(async (req) => {
     console.log(`[STEP 1 DONE] Created Transaction ID: ${transactionId}`);
 
     try {
-        // ---------------------------------------------------------
         // BƯỚC 2: CẬP NHẬT SỐ DƯ VÍ (Wallet Balance)
-        // ---------------------------------------------------------
         
         // Lấy số dư hiện tại
         const { data: wallet, error: walletFetchError } = await supabase
@@ -88,9 +84,7 @@ serve(async (req) => {
         if (walletUpdateError) throw new Error(`Lỗi cập nhật ví: ${walletUpdateError.message}`);
         console.log(`[STEP 2 DONE] Updated Wallet Balance.`);
 
-        // ---------------------------------------------------------
         // BƯỚC 3: CẬP NHẬT HẠN MỨC (Budget/Limit) - Chỉ khi chi tiêu
-        // ---------------------------------------------------------
         if (type === 'chi' && limit_id) {
             const { data: limit, error: limitFetchError } = await supabase
                 .from('limit')
@@ -125,9 +119,7 @@ serve(async (req) => {
         }
 
     } catch (processError: any) {
-        // ---------------------------------------------------------
         // COMPENSATING TRANSACTION (ROLLBACK / HOÀN TÁC)
-        // ---------------------------------------------------------
         console.error(`[SAGA ERROR] Có lỗi xảy ra: "${processError.message}". Đang tiến hành hoàn tác...`);
         
         // 1. Hoàn tác Bước 1: Xóa giao dịch vừa tạo
@@ -157,7 +149,7 @@ serve(async (req) => {
         throw processError;
     }
 
-    // --- THÀNH CÔNG HOÀN TOÀN ---
+    // THÀNH CÔNG HOÀN TOÀN
     return new Response(
       JSON.stringify({ success: true, message: "Giao dịch thành công" }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }

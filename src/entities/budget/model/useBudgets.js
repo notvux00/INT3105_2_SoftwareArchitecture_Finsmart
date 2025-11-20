@@ -1,7 +1,3 @@
-/**
- * Budget entity model layer
- * Custom hooks for budget/limit data management
- */
 import { useState, useEffect, useCallback } from 'react';
 import { budgetRepository } from '../api/budgetRepository';
 
@@ -13,7 +9,6 @@ export const useBudgets = (userId) => {
     if (!userId) return;
 
     try {
-      // Check localStorage cache first
       const cached = localStorage.getItem("budgets");
       if (cached) {
         setBudgets(JSON.parse(cached));
@@ -21,7 +16,6 @@ export const useBudgets = (userId) => {
 
       const data = await budgetRepository.fetchBudgets(userId);
 
-      // Update cache if data changed
       if (!cached || JSON.stringify(data) !== cached) {
         setBudgets(data);
         localStorage.setItem("budgets", JSON.stringify(data));
@@ -35,31 +29,40 @@ export const useBudgets = (userId) => {
 
   const addBudget = useCallback(async (budgetData) => {
     try {
-      const newBudget = await budgetRepository.addBudget({
-        ...budgetData,
+      const payload = {
         user_id: userId,
+        limit_name: budgetData.name,
+        limit_amount: budgetData.max,
+        used: budgetData.current,
+        limit_time: budgetData.timePeriod,   
         start_date: new Date(budgetData.startDate).toISOString(),
-      });
+      };
+
+      const newBudget = await budgetRepository.addBudget(payload);
 
       setBudgets(prevBudgets => [...prevBudgets, newBudget]);
-      localStorage.setItem("budgets", JSON.stringify([...budgets, newBudget]));
+      // Cập nhật lại cache localStorage để đồng bộ
+      const currentBudgets = JSON.parse(localStorage.getItem("budgets") || "[]");
+      localStorage.setItem("budgets", JSON.stringify([...currentBudgets, newBudget]));
+      
       return newBudget;
     } catch (error) {
       console.error("Lỗi khi thêm hạn mức:", error);
       throw error;
     }
-  }, [userId, budgets]);
+  }, [userId]);
 
   const updateBudget = useCallback(async (limitId, updateData) => {
     try {
-      const updatedBudget = await budgetRepository.updateBudget(limitId, {
-        limit_category: updateData.category,
+      const payload = {
+        limit_name: updateData.name,
         limit_amount: updateData.max,
         used: updateData.current,
-        limit_name: updateData.name,
         limit_time: updateData.timePeriod,
         start_date: new Date(updateData.startDate).toISOString(),
-      });
+      };
+
+      const updatedBudget = await budgetRepository.updateBudget(limitId, payload);
 
       const updatedBudgets = budgets.map((budget) =>
         budget.limit_id === limitId ? { ...budget, ...updatedBudget } : budget
@@ -86,10 +89,8 @@ export const useBudgets = (userId) => {
     }
   }, [budgets]);
 
-  // Check and reset expired budgets
   const checkAndResetBudgets = useCallback(async () => {
     const now = new Date();
-
     const updatedBudgets = await Promise.all(
       budgets.map(async (budget) => {
         const startDate = new Date(budget.start_date);
@@ -107,7 +108,6 @@ export const useBudgets = (userId) => {
         return budget;
       })
     );
-
     setBudgets(updatedBudgets);
     localStorage.setItem("budgets", JSON.stringify(updatedBudgets));
   }, [budgets]);
@@ -127,29 +127,15 @@ export const useBudgets = (userId) => {
   };
 };
 
-// Helper function to calculate end date based on time period
 function getEndDate(startDate, timePeriod) {
   const end = new Date(startDate);
-
   switch (timePeriod) {
-    case "5min":
-      end.setMinutes(end.getMinutes() + 5);
-      break;
-    case "day":
-      end.setDate(end.getDate() + 1);
-      break;
-    case "week":
-      end.setDate(end.getDate() + 7);
-      break;
-    case "month":
-      end.setMonth(end.getMonth() + 1);
-      break;
-    case "year":
-      end.setFullYear(end.getFullYear() + 1);
-      break;
-    default:
-      break;
+    case "5min": end.setMinutes(end.getMinutes() + 5); break;
+    case "day": end.setDate(end.getDate() + 1); break;
+    case "week": end.setDate(end.getDate() + 7); break;
+    case "month": end.setMonth(end.getMonth() + 1); break;
+    case "year": end.setFullYear(end.getFullYear() + 1); break;
+    default: break;
   }
-
   return end;
 }
