@@ -43,6 +43,7 @@ function Economical() {
 
   useEffect(() => {
     checkDeadlineNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [goals]);
 
   const fetchGoals = async () => {

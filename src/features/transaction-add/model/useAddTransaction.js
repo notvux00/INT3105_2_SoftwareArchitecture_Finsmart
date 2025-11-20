@@ -1,15 +1,12 @@
-import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addTransactionAPI } from "../api/addTransaction";
 import { userRepository } from "../../../entities/user";
-import { TRANSACTION_TYPES } from "../../../shared/config";
 import { QUERY_KEYS } from "../../../shared/config/queryKeys";
 
 const SUPABASE_PROJECT_URL = process.env.REACT_APP_SUPABASE_URL;
 const SAGA_FUNCTION_URL = `${SUPABASE_PROJECT_URL}/functions/v1/create-transaction-saga`;
 
 export const useAddTransaction = (userId) => {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   // Lấy danh sách Hạn mức
@@ -40,8 +37,6 @@ export const useAddTransaction = (userId) => {
         type: transactionData.type, // 'thu' hoặc 'chi'
         limit_id: transactionData.limitId || null
       };
-
-      const session = JSON.parse(localStorage.getItem('sb-nvbdupcoynrzkrwyhrjc-auth-token') || '{}'); 
       
       const token = process.env.REACT_APP_SUPABASE_ANON_KEY; 
 

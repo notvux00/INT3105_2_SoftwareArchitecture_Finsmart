@@ -55,6 +55,7 @@ const BudgetForm = ({ budget, onSave, onCancel }) => {
       setName("");
       setStartDate(new Date());
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [budget.limit_id]);
 
   return (

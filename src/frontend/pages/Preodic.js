@@ -1,10 +1,11 @@
 import "./Preodic.css";
 import { useNavigate } from "react-router-dom";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react"; // Đã bỏ useRef
 import CryptoJS from "crypto-js";
 import supabase from "../../database/supabase";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+
 const SECRET_KEY = process.env.REACT_APP_SECRET_KEY;
 const encryptedUserId = localStorage.getItem("user_id");
 let user_id = 0;
@@ -34,7 +35,7 @@ function Preodic() {
     navigate("/statistic");
   };
 
-  const [balance, setBalance] = useState(0);
+  // Đã bỏ state balance vì không sử dụng
   const [wallet_id, setWalletId] = useState(0);
 
   const [periodicData, setPeriodicData] = useState([]);
@@ -226,7 +227,7 @@ function Preodic() {
   };
 
   const calculateNextExecution = (startDate, frequency) => {
-    const now = new Date();
+    // Đã bỏ const now = new Date();
     let date = new Date(startDate);
 
     // Xử lý trường hợp ngày không hợp lệ
@@ -252,6 +253,8 @@ function Preodic() {
         break;
       case "Hàng năm":
         date.setFullYear(date.getFullYear() + 1);
+        break;
+      default: // Đã thêm default case
         break;
     }
 
@@ -299,7 +302,7 @@ function Preodic() {
         return null;
       }
 
-      setBalance(data.balance);
+      // Đã xóa setBalance vì đã xóa state balance
       setWalletId(data.wallet_id);
 
       return data;
@@ -338,7 +341,8 @@ function Preodic() {
       }
     };
     fetchPeriodicData();
-  }, [user_id]);
+    // Đã bỏ user_id ra khỏi dependency array vì nó là biến global
+  }, []);
 
   // Trong useEffect hoặc sau khi fetch periodicData:
   useEffect(() => {

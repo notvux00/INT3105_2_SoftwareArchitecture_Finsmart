@@ -3,7 +3,6 @@ import "./RegisterPage.css";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import supabase from "../../database/supabase";
-import bcrypt from "bcryptjs";
 
 
 const SUPABASE_PROJECT_URL = process.env.REACT_APP_SUPABASE_URL;

@@ -2,8 +2,6 @@ import React, { useState } from "react";
 import "./LoginPage.css";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import supabase from "../../database/supabase";
-import bcrypt from "bcryptjs";
 import CryptoJS from "crypto-js";
 
 const SECRET_KEY = process.env.REACT_APP_SECRET_KEY;
