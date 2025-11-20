@@ -15,8 +15,10 @@ const SpendingLimitsPanel = ({
   const [editingBudget, setEditingBudget] = useState(null);
   const formRef = useRef(null);
 
-  const handleAddBudget = async (budgetData) => {
+  // Sửa dòng này: Nhận 2 tham số, tham số đầu là id (bỏ qua vì là null), tham số sau là data
+  const handleAddBudget = async (_, budgetData) => {
     try {
+      // Truyền đúng budgetData vào hook
       await onAddBudget(budgetData);
       setShowAddForm(false);
     } catch (error) {

@@ -1,143 +1,93 @@
-/**
- * Transaction-add feature model layer
- * Refactored to use React Query Mutation
- */
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addTransactionAPI } from "../api/addTransaction";
-import { userRepository } from "../../../entities/user";
+import { userRepository } from "../../../entities/user"; // Vẫn dùng để lấy walletId
 import { TRANSACTION_TYPES } from "../../../shared/config";
 import { QUERY_KEYS } from "../../../shared/config/queryKeys";
+
+// Thêm URL Function (lấy từ biến môi trường hoặc hardcode để test local)
+const SUPABASE_PROJECT_URL = 'https://nvbdupcoynrzkrwyhrjc.supabase.co'; // URL dự án của bạn
+const SAGA_FUNCTION_URL = `${SUPABASE_PROJECT_URL}/functions/v1/create-transaction-saga`;
 
 export const useAddTransaction = (userId) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // 1. Lấy danh sách Hạn mức (Limits) bằng useQuery
-  // Thay thế useEffect thủ công
+  // 1. Lấy danh sách Hạn mức (Giữ nguyên)
   const { data: limits = [] } = useQuery({
     queryKey: QUERY_KEYS.LIMITS(userId),
     queryFn: () => addTransactionAPI.fetchLimits(userId),
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000, // Cache 5 phút
+    staleTime: 5 * 60 * 1000,
   });
 
-  // 2. Mutation: Xử lý logic Thêm giao dịch
+  // 2. Mutation: SỬA ĐỔI ĐỂ GỌI EDGE FUNCTION
   const mutation = useMutation({
     mutationFn: async (transactionData) => {
       if (!userId) throw new Error("Không xác thực được người dùng.");
 
-      const amountNumber = parseFloat(transactionData.amount);
-
-      // Validate dữ liệu
-      if (
-        !transactionData.amount ||
-        !transactionData.category ||
-        !transactionData.date
-      ) {
-        throw new Error(
-          "Vui lòng nhập đầy đủ số tiền, chọn hạng mục và ngày giao dịch."
-        );
-      }
-      if (isNaN(amountNumber) || amountNumber <= 0) {
-        throw new Error("Số tiền không hợp lệ. Vui lòng nhập số lớn hơn 0.");
-      }
-      const selectedDate = new Date(transactionData.date);
-      const currentDate = new Date();
-      if (selectedDate > currentDate) {
-        throw new Error("Ngày giao dịch không hợp lệ. Vui lòng chọn lại ngày.");
-      }
-
-      // Lấy thông tin ví
+      // Lấy wallet_id (Client chỉ cần gửi ID, logic trừ tiền Server lo)
       const walletInfo = await userRepository.getWalletId(userId);
       const walletId = walletInfo.wallet_id;
-      const currentBalance = walletInfo.balance;
 
-      const finalTransactionData = {
+      // Chuẩn bị payload gửi lên Edge Function
+      const payload = {
         user_id: userId,
         wallet_id: walletId,
         category: transactionData.category,
-        amount: amountNumber,
-        created_at: new Date(transactionData.date).toISOString(),
+        amount: parseFloat(transactionData.amount),
+        date: new Date(transactionData.date).toISOString(),
         note: transactionData.note || null,
+        type: transactionData.type, // 'thu' hoặc 'chi'
+        limit_id: transactionData.limitId || null
       };
 
-      let newBalance;
-      const transactionType = transactionData.type;
+      // Lấy token xác thực để gửi kèm (vì function verify_jwt = true)
+      const session = JSON.parse(localStorage.getItem('sb-nvbdupcoynrzkrwyhrjc-auth-token') || '{}'); 
+      // Lưu ý: Bạn cần đảm bảo lấy đúng access_token từ session Supabase hiện tại.
+      // Nếu bạn đang dùng cơ chế auth cũ trong code (chỉ lưu encrypted user_id), 
+      // bạn có thể cần truyền REACT_APP_SUPABASE_ANON_KEY vào header Authorization
+      // hoặc sửa Edge Function verify_jwt = false nếu chưa tích hợp Auth đầy đủ.
+      
+      // Với code hiện tại của bạn dùng encryptedUserId, ta dùng ANON KEY tạm thời:
+      const token = process.env.REACT_APP_SUPABASE_ANON_KEY; 
 
-      if (transactionType === TRANSACTION_TYPES.INCOME) {
-        newBalance = currentBalance + amountNumber;
-      } else {
-        newBalance = currentBalance - amountNumber;
-
-        // Kiểm tra số dư
-        if (newBalance < 0) {
-          throw new Error("Số dư không đủ để thực hiện giao dịch này.");
-        }
-
-        // Xử lý Hạn mức (Limit)
-        if (transactionData.limitId) {
-          const selectedLimit = limits.find(
-            (limit) => limit.limit_id === transactionData.limitId
-          );
-
-          if (selectedLimit) {
-            const newUsedAmount = (selectedLimit.used || 0) + amountNumber;
-
-            if (newUsedAmount > selectedLimit.limit_amount) {
-              throw new Error(
-                `Hạn mức "${selectedLimit.limit_name}" đã vượt quá giới hạn. Vui lòng chọn hạn mức khác.`
-              );
-            }
-
-            // Cập nhật hạn mức
-            await addTransactionAPI.updateLimitUsage(
-              selectedLimit.limit_id,
-              newUsedAmount
-            );
-            finalTransactionData.limit_id = transactionData.limitId;
-          }
-        }
-      }
-
-      // Gọi API thêm giao dịch
-      await addTransactionAPI.addTransaction(
-        finalTransactionData,
-        transactionType
-      );
-
-      // Cập nhật số dư ví
-      await userRepository.updateWalletBalance(walletId, newBalance);
-
-      return true; // Trả về true nếu thành công
-    },
-
-    // CẬP NHẬT TỰ ĐỘNG
-    onSuccess: () => {
-      // 1. Báo cho hệ thống biết danh sách giao dịch đã thay đổi -> Home tự tải lại
-      queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.TRANSACTIONS(userId),
+      const response = await fetch(SAGA_FUNCTION_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(payload),
       });
 
-      // 2. Báo số dư ví đã thay đổi -> Home tự cập nhật số tiền
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER(userId) });
+      const result = await response.json();
 
-      // 3. Báo hạn mức đã thay đổi (nếu có dùng)
+      if (!response.ok) {
+        throw new Error(result.error || "Lỗi khi xử lý giao dịch.");
+      }
+
+      return true;
+    },
+
+    onSuccess: () => {
+      // Invalidate tất cả để làm mới dữ liệu
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS(userId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER(userId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LIMITS(userId) });
 
-      alert("Thêm giao dịch thành công.");
-      navigate("/home");
+      alert("Thêm giao dịch thành công (Secured by Saga).");
     },
     onError: (error) => {
       console.error("Lỗi thêm giao dịch:", error);
-      alert(`Đã xảy ra lỗi: ${error.message}`);
+      alert(`Thất bại: ${error.message}`);
     },
   });
 
   return {
     limits,
-    addTransaction: mutation.mutate, // UI sẽ gọi hàm này
-    loading: mutation.isPending, // Trạng thái đang xử lý
+    addTransaction: mutation.mutate,
+    loading: mutation.isPending,
     refetchLimits: () =>
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LIMITS(userId) }),
   };
