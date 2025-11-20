@@ -1,145 +1,200 @@
+/* File: src/frontend/pages/Profile.css */
+
+/* Layout tổng thể: Flex row để sidebar và content nằm ngang */
 .bodyProfile {
   font-family: Arial, sans-serif;
-  background-color: #eef;
+  background-color: #f0f2f5; /* Màu nền xám nhạt giống Dashboard */
   margin: 0;
   padding: 0;
   display: flex;
-  height: 98vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
-/*sidebar*/
-.sidebarhome {
-  width: 117px; /* tăng chiều rộng để chứa thêm chữ */
-  background-color: white;
-  display: flex;
-  flex-direction: column;
-  margin: 1.8vh 20px;
-  padding: 20px;
-  height: 90vh;
-  border-radius: 10px;
+/* Ẩn sidebar cũ nếu lỡ còn sót html cũ */
+.bodyProfile .sidebarhome {
+  display: flex !important; /* Đảm bảo Sidebar mới hiển thị flex */
 }
 
-.sidebarhome .logo {
-  width: 100%;
-  height: 40px;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.logo img {
-  width: 30px;
-  height: 30px;
-}
-
-.logo-text {
-  font-size: 18px;
-  font-weight: bold;
-  color: #333;
-}
-
-nav {
-  display: flex;
-  flex-direction: column;
+/* Phần nội dung chính bên phải */
+.profile-main-content {
   flex-grow: 1;
-  gap: 15px;
-}
-
-.nav-btn {
-  display: flex;
-  align-items: center;
-  background-color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  padding: 8px;
-  width: 100%;
-  transition: background-color 0.3s ease;
-}
-
-.nav-btn img {
-  width: 20px;
-  height: 20px;
-  margin-right: 10px;
-}
-
-.nav-btn.user {
-  margin-top: auto;
-  margin-bottom: 30px;
-}
-
-.sidebarhome button:hover {
-  background-color: blueviolet;
-  border-radius: 8px;
-}
-
-.sidebarhome button:active {
-  background-color: blueviolet;
-}
-
-/*Section Chính*/
-section {
-  width: 60%; /* Giới hạn chiều rộng */
-  max-width: 1000px; /* Không cho quá lớn trên màn hình rộng */
-  height: 90vh; /* Chiều cao vừa phải */
+  padding: 40px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
+  align-items: center; /* Căn giữa nội dung */
+  overflow-y: auto;
+}
+
+/* Header của trang profile */
+.profile-header {
+  width: 100%;
+  max-width: 600px;
+  margin-bottom: 30px;
+  text-align: left;
+}
+
+.profile-header h1 {
+  font-size: 28px;
+  color: #1a237e; /* Màu xanh đậm thương hiệu */
+  margin-bottom: 5px;
+  margin-top: 0;
+}
+
+.profile-header p {
+  color: #666;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Card chứa thông tin: Giống style Dashboard */
+.profile-card {
   background: #ffffff;
-  margin: auto; /* Căn giữa ngang */
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  width: 100%;
+  max-width: 600px;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Avatar section */
+.profile-avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 40px;
+}
+
+.avatar-wrapper {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  padding: 4px;
+  border: 2px dashed #5c6bc0; /* Viền trang trí */
+  margin-bottom: 15px;
 }
 
 .imageProfile {
-  width: 200px;
-  height: 200px;
-  margin-top: 40px;
-}
-
-.profile-options {
-  display: flex;
-  flex-direction: column; /* Xếp theo chiều dọc */
-  align-items: flex-start; /* Căn chữ thẳng hàng bên trái */
-  justify-content: center; /* Căn giữa theo chiều dọc */
+  width: 100%;
   height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
-.profile-option {
+.profile-name {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+  margin: 0 0 5px 0;
+}
+
+.profile-role {
+  color: #5c6bc0;
+  font-size: 14px;
+  background-color: #e8eaf6;
+  padding: 4px 12px;
+  border-radius: 15px;
+  font-weight: 500;
+}
+
+/* Danh sách các hành động */
+.profile-actions-list {
+  width: 100%;
   display: flex;
-  align-items: center; /* Căn chữ và ô vuông theo hàng ngang */
-  margin-bottom: 50px; /* Khoảng cách giữa các dòng */
+  flex-direction: column;
+  gap: 15px;
 }
 
-.profile-option::before {
-  content: ""; /* Tạo ô vuông giả */
-  width: 35px;
-  height: 35px;
-  background-color: #d3d3d3; /* Màu xám nhạt */
-  display: inline-block;
-  margin-right: 10px; /* Khoảng cách giữa ô vuông và chữ */
-  border-radius: 10px; /* Làm bo góc một chút */
-}
-
-.profile-options button {
-  background: none;
-  border: none;
-  color: black;
-  font-size: 20px;
+.action-item {
+  display: flex;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: #fff;
+  border: 1px solid #eee;
+  border-radius: 16px;
   cursor: pointer;
-  text-align: left;
-  padding: 0;
+  transition: all 0.2s ease;
 }
 
-/*Không thích thì xóa*/
-.profile-options button:hover {
-  color: red; /* Chuyển sang màu đỏ */
-  text-decoration: underline; /* Gạch chân */
+.action-item:hover {
+  background-color: #f8f9fa;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border-color: #5c6bc0;
+}
+
+.action-icon {
+  font-size: 20px;
+  margin-right: 15px;
+  width: 40px;
+  height: 40px;
+  background-color: #f0f2f5;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.action-info {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.action-info span {
+  font-weight: 600;
+  color: #333;
+  font-size: 16px;
+}
+
+.action-info small {
+  color: #888;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.action-arrow {
+  color: #ccc;
+  font-weight: bold;
+  font-size: 20px;
+}
+
+/* Nút đăng xuất */
+.action-item.logout:hover {
+  background-color: #ffebee;
+  border-color: #ef5350;
+}
+
+.action-item.logout .action-icon {
+  background-color: #ffebee;
+  color: #ef5350;
+}
+
+.action-item.logout .action-info span {
+  color: #ef5350;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .bodyProfile {
+    flex-direction: column;
+    height: auto;
+    overflow-y: auto;
+  }
+  
+  .profile-main-content {
+    padding: 20px;
+  }
+
+  /* Đè lại CSS của sidebar cũ nếu cần */
+  .bodyProfile .sidebarhome {
+     width: auto;
+     height: auto;
+     margin: 10px;
+     flex-direction: row;
+  }
 }
