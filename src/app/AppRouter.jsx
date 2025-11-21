@@ -6,29 +6,35 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "../shared/ui/ProtectedRoute";
 
-// Import pages
+// Import Pages (FSD Architecture)
 import HomePage from "../pages/HomePage";
 import TransactionsPage from "../pages/TransactionsPage";
 import ProfilePage from "../pages/ProfilePage";
 import StatisticPage from "../pages/StatisticPage";
-import HistoryPage from "../pages/HistoryPage";
-import EconomicalPage from "../pages/EconomicalPage";
 import PeriodicPage from "../pages/PeriodicPage";
+import EconomicalPage from "../pages/EconomicalPage";
 
-// Import legacy pages (will be refactored later)
-import Login from "../frontend/pages/LandingPage";
+// Import Auth Pages (New)
+import LandingPage from "../pages/auth/LandingPage";
+import LoginPage from "../pages/auth/LoginPage";
+import RegisterPage from "../pages/auth/RegisterPage";
+import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage";
+
+// Import Legacy Pages (Chỉ còn 2 trang này chưa refactor)
 import AI from "../frontend/pages/AI";
-import LandingPage from "../frontend/pages/LandingPage";
-import LoginPage from "../frontend/pages/LoginPage";
-import RegisterPage from "../frontend/pages/RegisterPage";
-import ForgotPasswordPage from "../frontend/pages/ForgotPasswordPage";
 import UpdateProfile from "../frontend/pages/UpdateProfile";
 
 function AppRouter() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Login />} />
+        {/* Public Routes */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
+        {/* Protected Routes */}
         <Route
           path="/home"
           element={
@@ -70,14 +76,6 @@ function AppRouter() {
           }
         />
         <Route
-          path="/ai"
-          element={
-            <ProtectedRoute>
-              <AI />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/profile"
           element={
             <ProtectedRoute>
@@ -85,18 +83,16 @@ function AppRouter() {
             </ProtectedRoute>
           }
         />
+
+        {/* Legacy Routes (Vẫn dùng code cũ) */}
         <Route
-          path="/history"
+          path="/ai"
           element={
             <ProtectedRoute>
-              <HistoryPage />
+              <AI />
             </ProtectedRoute>
           }
         />
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route
           path="/update-profile"
           element={

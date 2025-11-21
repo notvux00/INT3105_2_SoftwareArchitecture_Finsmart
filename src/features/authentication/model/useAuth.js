@@ -1,75 +1,66 @@
-/**
- * Authentication feature model layer
- * Custom hooks for authentication logic
- */
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import CryptoJS from 'crypto-js';
-import { authAPI } from '../api/authAPI';
-import { SECRET_KEY } from '../../../shared/config';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import CryptoJS from "crypto-js";
+import { authAPI } from "../api/authAPI";
+import { SECRET_KEY } from "../../../shared/config";
 
-export const useAuth = () => {
+export const useAuthFeature = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const login = async (email, password) => {
-    setLoading(true);
+  const login = async ({ username, password }) => {
+    setIsLoading(true);
+    setError(null);
     try {
-      const user = await authAPI.login(email, password);
-      
-      // Encrypt user ID and store in localStorage
-      const encryptedUserId = CryptoJS.AES.encrypt(user.user_id.toString(), SECRET_KEY).toString();
+      const result = await authAPI.login({ username, password });
+
+      console.log(`Đăng nhập thành công! Xin chào, ${username}`);
+      alert(`Đăng nhập thành công! Xin chào, ${username}`);
+
+      // Mã hóa và lưu user_id
+      const encryptedUserId = CryptoJS.AES.encrypt(
+        result.user_id.toString(),
+        SECRET_KEY
+      ).toString();
       localStorage.setItem("user_id", encryptedUserId);
-      
+
       navigate("/home");
-      return user;
-    } catch (error) {
-      throw error;
+      // Reload nhẹ để cập nhật state toàn app (theo code cũ)
+      setTimeout(() => window.location.reload(), 100);
+    } catch (err) {
+      alert(err.message);
+      setError(err.message);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   const register = async (userData) => {
-    setLoading(true);
+    setIsLoading(true);
+    setError(null);
     try {
-      const user = await authAPI.register(userData);
-      
-      // Encrypt user ID and store in localStorage
-      const encryptedUserId = CryptoJS.AES.encrypt(user.user_id.toString(), SECRET_KEY).toString();
-      localStorage.setItem("user_id", encryptedUserId);
-      
-      navigate("/home");
-      return user;
-    } catch (error) {
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (userData.password !== userData.confirmPassword) {
+        throw new Error("Mật khẩu xác nhận không khớp!");
+      }
 
-  const logout = () => {
-    localStorage.removeItem("user_id");
-    navigate("/");
-  };
+      await authAPI.register(userData);
 
-  const resetPassword = async (email) => {
-    setLoading(true);
-    try {
-      const result = await authAPI.resetPassword(email);
-      return result;
-    } catch (error) {
-      throw error;
+      alert("✅ Đăng ký thành công!");
+      navigate("/login");
+      setTimeout(() => window.location.reload(), 100);
+    } catch (err) {
+      alert(err.message);
+      setError(err.message);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return {
     login,
     register,
-    logout,
-    resetPassword,
-    loading,
+    isLoading,
+    error,
   };
 };

@@ -1,62 +1,91 @@
 /**
  * Authentication feature API layer
- * Handles authentication-related operations
+ * Handles interactions with Supabase Auth and Edge Functions
  */
-import { supabase } from '../../../shared';
+import { supabase } from "../../../shared";
+
+// Lấy URL dự án từ biến môi trường
+const SUPABASE_PROJECT_URL =
+  process.env.REACT_APP_SUPABASE_URL ||
+  "https://nvbdupcoynrzkrwyhrjc.supabase.co";
 
 export const authAPI = {
-  // Login user
-  async login(email, password) {
-    const { data, error } = await supabase
-      .from('users')
-      .select('user_id, email, full_name')
-      .eq('email', email)
-      .eq('password', password)
-      .single();
+  // Đăng nhập (Gọi Edge Function login-limiting)
+  async login({ username, password }) {
+    const EDGE_URL = `${SUPABASE_PROJECT_URL}/functions/v1/login-limiting`;
 
-    if (error) {
-      throw new Error('Email hoặc mật khẩu không đúng');
+    const response = await fetch(EDGE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ username, password }),
+    });
+
+    const result = await response.json();
+
+    if (response.status !== 200) {
+      throw new Error(result.error || "Đăng nhập thất bại");
     }
 
-    return data;
+    return result; // Trả về { success: true, user_id: ... }
   },
 
-  // Register new user
-  async register(userData) {
-    const { data, error } = await supabase
-      .from('users')
-      .insert([userData])
-      .select()
-      .single();
+  // Đăng ký (Gọi Edge Function register-limiting)
+  async register({ email, password, username, fullName, dob, phone }) {
+    const EDGE_URL = `${SUPABASE_PROJECT_URL}/functions/v1/register-limiting`;
 
-    if (error) {
-      throw new Error('Đăng ký thất bại. Vui lòng thử lại.');
+    const response = await fetch(EDGE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ email, password, username, fullName, dob, phone }),
+    });
+
+    const result = await response.json();
+
+    if (response.status !== 200) {
+      throw new Error(result.error || "Đăng ký thất bại");
     }
 
-    // Create wallet for new user
-    await this.createWallet(data.user_id);
-    
-    return data;
+    // Tạo ví sau khi đăng ký thành công (Logic cũ của bạn)
+    await this.createWallet(result.user_id || username); // Edge function trả về user_id hoặc ta query lại
+
+    return result;
   },
 
-  // Create wallet for user
-  async createWallet(userId) {
-    const { error } = await supabase
-      .from('wallets')
-      .insert([{
+  // Tạo ví (Hỗ trợ cho register)
+  async createWallet(usernameOrId) {
+    // Nếu tham số là username, cần query lấy ID trước
+    let userId = usernameOrId;
+
+    // Kiểm tra xem có phải ID không, nếu không thì query
+    if (typeof usernameOrId === "string" && isNaN(Number(usernameOrId))) {
+      const { data } = await supabase
+        .from("users")
+        .select("user_id")
+        .eq("user_name", usernameOrId)
+        .single();
+      if (data) userId = data.user_id;
+    }
+
+    if (!userId) return;
+
+    const { error } = await supabase.from("wallets").insert([
+      {
         user_id: userId,
-        balance: 0
-      }]);
+        wallet_name: "Ví chính",
+        balance: 0,
+      },
+    ]);
 
-    if (error) {
-      throw new Error('Không thể tạo ví cho người dùng');
-    }
+    if (error) console.error("Error creating wallet:", error);
   },
 
-  // Reset password
-  async resetPassword(email) {
-    // This would typically involve sending an email
-    // For now, just return success
-    return { success: true };
+  async logout() {
+    localStorage.removeItem("user_id");
   },
 };
