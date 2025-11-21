@@ -3,7 +3,11 @@ import "../frontend/pages/Transaction.css";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../shared/hooks";
 import { useAddTransaction } from "../features/transaction-add";
-import { incomeCategories, expenseCategories, TRANSACTION_TYPES } from "../shared/config";
+import {
+  incomeCategories,
+  expenseCategories,
+  TRANSACTION_TYPES,
+} from "../shared/config";
 import { startSpeechRecognition } from "../frontend/speech";
 
 const SUPABASE_PROJECT_URL = process.env.REACT_APP_SUPABASE_URL;
@@ -14,7 +18,7 @@ const formatDateTimeForInput = (isoString) => {
     // Nếu AI không trả về ngày, lấy giờ hiện tại theo múi giờ máy tính
     const now = new Date();
     // Trừ đi offset để lấy giờ local khi chuyển sang ISO
-    return new Date(now.getTime() - (now.getTimezoneOffset() * 60000))
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
       .toISOString()
       .slice(0, 16); // Cắt lấy yyyy-MM-ddThh:mm
   }
@@ -27,7 +31,9 @@ const TransactionsPage = () => {
   const { userId } = useAuth();
   const { limits, addTransaction, loading } = useAddTransaction(userId);
 
-  const [transactionType, setTransactionType] = useState(TRANSACTION_TYPES.INCOME);
+  const [transactionType, setTransactionType] = useState(
+    TRANSACTION_TYPES.INCOME
+  );
   const [activeCategory, setActiveCategory] = useState(null);
   const [activeLimit, setActiveLimit] = useState(null);
   const [amount, setAmount] = useState("");
@@ -55,10 +61,9 @@ const TransactionsPage = () => {
           setAmount(result.amount);
           setSelectCategory(result.category);
           setNote(result.note);
-          
+
           const formattedDate = formatDateTimeForInput(result.datetime);
           setDate(formattedDate);
-
         } else {
           alert(result.response_message);
         }
@@ -122,20 +127,20 @@ Yêu cầu của người dùng: "${userMessage}"
 `;
 
       const response = await fetch(GEMINI_PROXY_ENDPOINT, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           prompt,
-          model: "gemini-2.5-flash"
-        })
+          model: "gemini-2.5-flash",
+        }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!data.success) {
-        throw new Error(data.error || 'API call failed');
+        throw new Error(data.error || "API call failed");
       }
 
       const jsonString = data.response
@@ -210,18 +215,22 @@ Yêu cầu của người dùng: "${userMessage}"
       </div>
 
       <main>
-        <section>
+        <section className="transaction-section">
           <div className="head-button">
             <div className="categories">
               <button
                 onClick={() => handleTransactionType(TRANSACTION_TYPES.INCOME)}
-                className={transactionType === TRANSACTION_TYPES.INCOME ? "active" : ""}
+                className={
+                  transactionType === TRANSACTION_TYPES.INCOME ? "active" : ""
+                }
               >
                 Thu tiền
               </button>
               <button
                 onClick={() => handleTransactionType(TRANSACTION_TYPES.EXPENSE)}
-                className={transactionType === TRANSACTION_TYPES.EXPENSE ? "active" : ""}
+                className={
+                  transactionType === TRANSACTION_TYPES.EXPENSE ? "active" : ""
+                }
               >
                 Chi tiền
               </button>
@@ -343,7 +352,11 @@ Yêu cầu của người dùng: "${userMessage}"
           />
 
           <div className="confirm-container">
-            <button className="confirm" onClick={handleConfirm} disabled={loading}>
+            <button
+              className="confirm"
+              onClick={handleConfirm}
+              disabled={loading}
+            >
               {loading ? "Đang xử lý..." : "Xác nhận"}
             </button>
           </div>

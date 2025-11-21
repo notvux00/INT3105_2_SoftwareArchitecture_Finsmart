@@ -13,6 +13,8 @@ import ProfilePage from "../pages/ProfilePage";
 import StatisticPage from "../pages/StatisticPage";
 import HistoryPage from "../pages/HistoryPage";
 import EconomicalPage from "../pages/EconomicalPage";
+import PeriodicPage from "../pages/PeriodicPage";
+
 // Import legacy pages (will be refactored later)
 import Login from "../frontend/pages/LandingPage";
 import AI from "../frontend/pages/AI";
@@ -21,7 +23,6 @@ import LoginPage from "../frontend/pages/LoginPage";
 import RegisterPage from "../frontend/pages/RegisterPage";
 import ForgotPasswordPage from "../frontend/pages/ForgotPasswordPage";
 import UpdateProfile from "../frontend/pages/UpdateProfile";
-import Preodic from "../frontend/pages/Preodic";
 
 function AppRouter() {
   return (
@@ -48,7 +49,7 @@ function AppRouter() {
           path="/preodic"
           element={
             <ProtectedRoute>
-              <Preodic />
+              <PeriodicPage />
             </ProtectedRoute>
           }
         />

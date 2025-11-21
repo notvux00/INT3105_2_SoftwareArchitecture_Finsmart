@@ -81,7 +81,7 @@ nav {
 /*sidebar*/
 
 /* Section chính */
-section {
+.ai-section-container {
   width: 70%; /* Giới hạn chiều rộng */
   max-width: 1000px; /* Không cho quá lớn trên màn hình rộng */
   height: 90vh; /* Chiều cao vừa phải */
@@ -202,7 +202,7 @@ section {
 
 /* Responsive - Điều chỉnh kích thước trên màn hình nhỏ */
 @media (max-width: 768px) {
-  section {
+  ai-section-container {
     width: 90%; /* Giảm kích thước trên màn hình nhỏ */
     height: 80vh; /* Cao hơn một chút */
   }

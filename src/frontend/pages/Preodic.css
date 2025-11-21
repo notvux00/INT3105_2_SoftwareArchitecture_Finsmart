@@ -6,11 +6,12 @@
   padding: 0;
   display: flex;
   height: 98vh;
+  /* Flex container chính, chứa Sidebar và Main Content */
 }
 
 /* Sidebar */
 .sidebarhome {
-  width: 117px; /* tăng chiều rộng để chứa thêm chữ */
+  width: 117px;
   background-color: white;
   display: flex;
   flex-direction: column;
@@ -18,6 +19,7 @@
   padding: 20px;
   height: 90vh;
   border-radius: 10px;
+  flex-shrink: 0; /* Ngăn sidebar bị co lại */
 }
 
 .sidebarhome .logo {
@@ -79,14 +81,25 @@ nav {
   background-color: blueviolet;
 }
 
-/*Main content*/
+/* --- MAIN CONTENT WRAPPER --- */
+.periodic-main-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto; /* Cuộn toàn bộ nội dung bên phải */
+  padding-bottom: 20px;
+}
+
+/* Container Bảng */
 .periodic-table-container {
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
   padding: 10px 24px 24px 32px;
-  margin: 32px 20px 30px 32px;
-  max-width: 1050px;
+  margin: 20px 20px 0 0;
+  max-width: 100%; /* Đảm bảo không bị tràn */
+  box-sizing: border-box;
 }
 
 .periodic-table-container h2 {
@@ -140,8 +153,9 @@ nav {
   box-shadow: 0 0 0 2px rgba(57, 73, 171, 0.08);
 }
 
-/* Overlay che toàn màn hình */
-.overlay {
+/* Overlay */
+.periodic-overlay,
+.periodic-overlay-dark {
   position: fixed;
   top: 0;
   left: 0;
@@ -151,29 +165,23 @@ nav {
   z-index: 999;
 }
 
-.overlay2 {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(32, 32, 32, 0.5);
-  z-index: 999;
-}
-
-/* Form cố định giữa màn hình */
-.form-container {
+/* Modal Form */
+.periodic-modal-content {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   background: #fff;
   padding: 30px;
-  border-radius: 8px;
+  border-radius: 12px;
   max-width: 500px;
   width: 90%;
   z-index: 1000;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+
+  /* Thêm cuộn cho modal nếu màn hình thấp */
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .form-group {
@@ -254,7 +262,7 @@ span[role="presentation"] {
 
 .periodic-table th,
 .periodic-table td {
-  width: 160px; /* Đặt chiều rộng phù hợp với số cột */
+  width: 160px;
   min-width: 120px;
   padding: 14px 8px;
   text-align: left;
@@ -268,7 +276,7 @@ span[role="presentation"] {
 }
 
 .periodic-table tbody {
-  max-height: 540px; /* Thay đổi giá trị này theo nhu cầu */
+  max-height: 540px;
   overflow-y: auto;
 }
 
@@ -290,7 +298,6 @@ span[role="presentation"] {
 }
 
 .periodic-table td:nth-child(6) {
-  /* Định dạng trạng thái */
   text-transform: uppercase;
   letter-spacing: 1px;
   padding-right: 0;
@@ -306,21 +313,6 @@ span[role="presentation"] {
 
 .periodic-table td[data-status="Kết thúc"] {
   color: #d32f2f;
-}
-
-/* Responsive */
-@media (max-width: 800px) {
-  .periodic-table-container {
-    padding: 16px 4px;
-  }
-  .periodic-table th,
-  .periodic-table td {
-    padding: 8px 6px;
-    font-size: 0.98rem;
-  }
-  .periodic-table-container h2 {
-    font-size: 1.2rem;
-  }
 }
 
 .btnpre {
@@ -365,13 +357,16 @@ span[role="presentation"] {
   min-width: 120px;
 }
 
+/* Notice */
 .periodic-notice {
-  margin-top: 2rem;
+  margin-top: 20px;
+  margin-right: 20px;
   margin-bottom: 2rem;
   padding: 1.5rem;
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
 }
 .reminder-item {
   padding: 0.8rem;
@@ -388,4 +383,52 @@ span[role="presentation"] {
 .notice-empty {
   color: #bdbdbd;
   font-style: italic;
+}
+
+/* --- MOBILE RESPONSIVE --- */
+@media (max-width: 768px) {
+  .bodyPre {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .sidebarhome {
+    width: auto;
+    height: auto;
+    margin: 10px;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 10px;
+    overflow-x: auto;
+  }
+
+  .sidebarhome nav {
+    flex-direction: row;
+  }
+
+  .sidebarhome .nav-btn {
+    flex-direction: column;
+    font-size: 12px;
+    padding: 5px;
+  }
+
+  .nav-label {
+    display: none;
+  }
+
+  .periodic-main-content {
+    height: auto;
+    overflow-y: visible;
+  }
+
+  .periodic-table-container {
+    margin: 10px;
+    width: auto;
+    padding: 15px;
+  }
+
+  .periodic-notice {
+    margin: 10px;
+    width: auto;
+  }
 }

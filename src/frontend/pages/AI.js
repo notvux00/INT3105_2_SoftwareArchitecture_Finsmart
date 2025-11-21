@@ -12,7 +12,11 @@ const SUPABASE_PROJECT_URL = process.env.REACT_APP_SUPABASE_URL;
 const GEMINI_PROXY_ENDPOINT = `${SUPABASE_PROJECT_URL}/functions/v1/gemini-proxy`;
 
 function AI() {
-  const sessionId = useRef(`session-${new Date().toISOString().split("T")[0]}-${Math.floor(Math.random() * 10000)}`);
+  const sessionId = useRef(
+    `session-${new Date().toISOString().split("T")[0]}-${Math.floor(
+      Math.random() * 10000
+    )}`
+  );
 
   const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
@@ -120,21 +124,22 @@ function AI() {
           </nav>
         </div>
       </div>
-      <section>
+      <section className="ai-section-container">
         <div className="chat_container">
           <div className="chat-history-sessions">
             <button
               className="new-session-btn"
               onClick={handleCreateNewSession}
             >
-              <i className="fas fa-plus"></i>
-              + Đoạn chat mới
+              <i className="fas fa-plus"></i>+ Đoạn chat mới
             </button>
             <h4>Lịch sử Chat</h4>
             {sessions.map((s) => (
               <button
                 key={s.session_id}
-                className={`chat-session-item ${selectedSession?.session_id === s.session_id ? "active" : ""}`}
+                className={`chat-session-item ${
+                  selectedSession?.session_id === s.session_id ? "active" : ""
+                }`}
                 onClick={() => setSelectedSession(s)}
               >
                 <p>{s.title}</p>
@@ -142,7 +147,12 @@ function AI() {
               </button>
             ))}
           </div>
-          <ChatWindow session={selectedSession} messages={messages} setMessages={setMessages} sessionId={sessionId} />
+          <ChatWindow
+            session={selectedSession}
+            messages={messages}
+            setMessages={setMessages}
+            sessionId={sessionId}
+          />
         </div>
       </section>
     </>
@@ -150,14 +160,13 @@ function AI() {
 }
 
 function ChatWindow({ session, messages, setMessages, sessionId }) {
-
   const [questionHistory, setQuestionHistory] = useState([]);
   const [answerHistory, setAnswerHistory] = useState([]);
 
   const [transactions, setTransactions] = useState("");
   const [income, setIncome] = useState("");
   const [isListening, setIsListening] = useState(false);
-  
+
   // Removed unused setSuggestions
   const suggestions = [
     "Vẽ biểu đồ dự đoán tài chính của tôi sau 1 tháng",
@@ -181,20 +190,20 @@ function ChatWindow({ session, messages, setMessages, sessionId }) {
       Yêu cầu: "${userMessage}"
       `;
       const response = await fetch(GEMINI_PROXY_ENDPOINT, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           prompt,
-          model: "gemini-2.5-flash"
-        })
+          model: "gemini-2.5-flash",
+        }),
       });
 
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || 'API call failed');
+        throw new Error(data.error || "API call failed");
       }
 
       const jsonString = data.response
@@ -207,12 +216,19 @@ function ChatWindow({ session, messages, setMessages, sessionId }) {
       console.error("Lỗi phân tích ý định:", error);
       return {
         is_prediction_request: false,
-        response_message: error.message || "Xin lỗi, tôi không hiểu yêu cầu của bạn.",
+        response_message:
+          error.message || "Xin lỗi, tôi không hiểu yêu cầu của bạn.",
       };
     }
   }
-  
-  async function handleGoogleChat(userQuestion, questionHistory, answerHistory, transactions, income) {
+
+  async function handleGoogleChat(
+    userQuestion,
+    questionHistory,
+    answerHistory,
+    transactions,
+    income
+  ) {
     const prompt = `
 Dữ liệu chi tiêu: ${transactions}
 Dữ liệu thu nhập: ${income}
@@ -226,20 +242,20 @@ Câu hỏi: "${userQuestion}"
     try {
       // Gọi Edge Function
       const response = await fetch(GEMINI_PROXY_ENDPOINT, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           prompt,
-          model: "gemini-2.5-flash"
-        })
+          model: "gemini-2.5-flash",
+        }),
       });
 
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || 'API call failed');
+        throw new Error(data.error || "API call failed");
       }
 
       return data.response.replace(/\*+/g, "\n").trim();
@@ -286,7 +302,7 @@ Câu hỏi: "${userQuestion}"
         .eq("session_id", session.session_id)
         .eq("user_id", user_id);
     }
-    
+
     // Thêm tin nhắn người dùng
     const userMsg = { sender: "user", type: "text", content: text };
     const updatedMessages = [...messages, userMsg];
@@ -332,8 +348,8 @@ Câu hỏi: "${userQuestion}"
           text,
           questionHistory,
           answerHistory,
-          transactions,  // thêm tham số này
-          income        // thêm tham số này
+          transactions, // thêm tham số này
+          income // thêm tham số này
         );
         setAnswerHistory(chatbotAnswer);
 
@@ -354,7 +370,6 @@ Câu hỏi: "${userQuestion}"
           return updated;
         });
       }, 1000);
-
     }
 
     setInputText("");
@@ -371,7 +386,6 @@ Câu hỏi: "${userQuestion}"
       return msg;
     });
   }
-
 
   const handleVoiceInput = () => {
     setIsListening(true);
@@ -430,21 +444,18 @@ Câu hỏi: "${userQuestion}"
   async function saveChatToSupabase(newMessages) {
     if (!user_id) return;
 
-    const { error } = await supabase
-      .from("chat_history")
-      .upsert(
-        {
-          user_id: user_id,
-          session_id: session.session_id,
-          messages: newMessages,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: ["user_id", "session_id"] }
-      );
+    const { error } = await supabase.from("chat_history").upsert(
+      {
+        user_id: user_id,
+        session_id: session.session_id,
+        messages: newMessages,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: ["user_id", "session_id"] }
+    );
 
     if (error) console.error("Lỗi lưu lịch sử chat:", error);
   }
-
 
   return (
     <div className="chat-window">
