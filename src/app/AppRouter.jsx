@@ -20,7 +20,6 @@ import LoginPage from "../pages/auth/LoginPage";
 import RegisterPage from "../pages/auth/RegisterPage";
 import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage";
 
-// Import Legacy Pages (Chỉ còn 2 trang này chưa refactor)
 import AI from "../frontend/pages/AI";
 import UpdateProfile from "../frontend/pages/UpdateProfile";
 

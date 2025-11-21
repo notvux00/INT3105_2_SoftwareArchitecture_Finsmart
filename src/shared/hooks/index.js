@@ -1,5 +1,2 @@
-/**
- * Shared hooks exports
- * Centralized exports for shared custom hooks
- */
-export { useAuth } from './useAuth';
+export { useAuth } from "./useAuth";
+export { useSystemHealth } from "./useSystemHealth";

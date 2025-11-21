@@ -19,4 +19,8 @@ export const QUERY_KEYS = {
   GOALS: (userId) => ["goals", userId],
 
   PERIODIC: (userId) => ["periodic", userId],
+
+  SYSTEM: {
+    HEALTH: ["system", "health"],
+  },
 };

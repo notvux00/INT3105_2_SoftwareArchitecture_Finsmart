@@ -9,22 +9,10 @@ import {
   TRANSACTION_TYPES,
 } from "../shared/config";
 import { startSpeechRecognition } from "../frontend/speech";
+import { Sidebar } from "../shared/ui"; // Import Sidebar dùng chung
 
-const SUPABASE_PROJECT_URL = process.env.REACT_APP_SUPABASE_URL;
+const SUPABASE_PROJECT_URL = "https://nvbdupcoynrzkrwyhrjc.supabase.co";
 const GEMINI_PROXY_ENDPOINT = `${SUPABASE_PROJECT_URL}/functions/v1/gemini-proxy`;
-
-const formatDateTimeForInput = (isoString) => {
-  if (!isoString) {
-    // Nếu AI không trả về ngày, lấy giờ hiện tại theo múi giờ máy tính
-    const now = new Date();
-    // Trừ đi offset để lấy giờ local khi chuyển sang ISO
-    return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16); // Cắt lấy yyyy-MM-ddThh:mm
-  }
-  // Nếu có chuỗi ISO (VD: 2025-04-13T21:41:00Z), cắt bỏ phần giây và múi giờ
-  return isoString.substring(0, 16);
-};
 
 const TransactionsPage = () => {
   const navigate = useNavigate();
@@ -42,28 +30,16 @@ const TransactionsPage = () => {
   const [selectCategory, setSelectCategory] = useState("");
   const [isListening, setIsListening] = useState(false);
 
-  // Navigation handlers
-  const handleHome = () => navigate("/home");
-  const handleAI = () => navigate("/ai");
-  const handleProfile = () => navigate("/profile");
-  const handleEconomical = () => navigate("/economical");
-  const handlePreodic = () => navigate("/preodic");
-  const handleStatistic = () => navigate("/statistic");
-
-  // Voice input handler
   function handleVoiceInput() {
     setIsListening(true);
     startSpeechRecognition(
       async (text) => {
         const result = await analyzeUserIntent(text);
-        console.log(result);
         if (result.add_transaction === true) {
           setAmount(result.amount);
           setSelectCategory(result.category);
           setNote(result.note);
-
-          const formattedDate = formatDateTimeForInput(result.datetime);
-          setDate(formattedDate);
+          setDate(result.datetime);
         } else {
           alert(result.response_message);
         }
@@ -77,19 +53,16 @@ const TransactionsPage = () => {
     );
   }
 
-  // Transaction type handler
   const handleTransactionType = (type) => {
     setTransactionType(type);
     setActiveCategory(null);
     setActiveLimit(null);
   };
 
-  // Category selection handler
   const handleCategoryClick = (categoryValue) => {
     setSelectCategory(categoryValue);
   };
 
-  // Limit selection handler
   const handleLimitClick = (limitId) => {
     if (activeLimit === limitId) {
       setActiveLimit(null);
@@ -98,7 +71,6 @@ const TransactionsPage = () => {
     }
   };
 
-  // Form reset
   const resetForm = () => {
     setAmount("");
     setNote("");
@@ -108,7 +80,6 @@ const TransactionsPage = () => {
     setSelectCategory("");
   };
 
-  // AI intent analysis
   async function analyzeUserIntent(userMessage) {
     try {
       const prompt = `
@@ -119,8 +90,8 @@ Phân tích yêu cầu của người dùng bên dưới và trả về **duy nh
   "amount": number | null,
   "category": string | null,
   "note": string | null,
-  "response_message": string,
-  "datetime": string | null
+  "response_message": string
+  "datetime": string | null,
 }
 
 Yêu cầu của người dùng: "${userMessage}"
@@ -136,7 +107,6 @@ Yêu cầu của người dùng: "${userMessage}"
           model: "gemini-2.5-flash",
         }),
       });
-
       const data = await response.json();
 
       if (!data.success) {
@@ -158,7 +128,6 @@ Yêu cầu của người dùng: "${userMessage}"
     }
   }
 
-  // Confirm transaction
   const handleConfirm = async () => {
     const transactionData = {
       type: transactionType,
@@ -177,45 +146,11 @@ Yêu cầu của người dùng: "${userMessage}"
 
   return (
     <div className="bodyadd">
-      <div className="sidebarhome">
-        <div className="logo">
-          <img src="Soucre/Logo.png" alt="Logo FinSmart" />
-          <span className="logo-text">FinSmart</span>
-        </div>
-        <nav>
-          <button className="nav-btn home" onClick={handleHome}>
-            <img src="Soucre/Dashboard.png" alt="Trang chủ" />
-            <span className="nav-label">Trang chủ</span>
-          </button>
-          <button className="nav-btn add">
-            <img src="Soucre/AddTransaction.png" alt="Thêm Giao dịch" />
-            <span className="nav-label">Giao dịch</span>
-          </button>
-          <button className="nav-btn eco" onClick={handlePreodic}>
-            <img src="Soucre/preodic-icon.png" alt="Tiết kiệm" />
-            <span className="nav-label">Định kỳ</span>
-          </button>
-          <button className="nav-btn eco" onClick={handleStatistic}>
-            <img src="Soucre/statistic.png" alt="Thống kê" />
-            <span className="nav-label">Thống kê</span>
-          </button>
-          <button className="nav-btn eco" onClick={handleEconomical}>
-            <img src="Soucre/economy-icon.png" alt="Tiết kiệm" />
-            <span className="nav-label">Tiết kiệm</span>
-          </button>
-          <button className="nav-btn AI" onClick={handleAI}>
-            <img src="Soucre/AI.png" alt="Chatbot" />
-            <span className="nav-label">Chatbot</span>
-          </button>
-          <button className="nav-btn user" onClick={handleProfile}>
-            <img src="Soucre/Logout.png" alt="Tài khoản" />
-            <span className="nav-label">Thông tin cá nhân</span>
-          </button>
-        </nav>
-      </div>
+      {/* THAY THẾ SIDEBAR CŨ */}
+      <Sidebar currentPath="/transaction" />
 
       <main>
-        <section className="transaction-section">
+        <section>
           <div className="head-button">
             <div className="categories">
               <button
@@ -347,7 +282,7 @@ Yêu cầu của người dùng: "${userMessage}"
           <input
             type="datetime-local"
             className="date-picker"
-            value={date || ""}
+            value={date}
             onChange={(e) => setDate(e.target.value)}
           />
 

@@ -4,6 +4,7 @@
  */
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import SystemStatus from "./SystemStatus";
 
 const Sidebar = ({ currentPath }) => {
   const navigate = useNavigate();
@@ -48,7 +49,7 @@ const Sidebar = ({ currentPath }) => {
       handler: handleEconomical,
     },
     { path: "/ai", label: "Chatbot", icon: "AI.png", handler: handleAI },
-    // Thêm className: 'user' để CSS biết đây là nút cần đẩy xuống đáy
+    // Class 'user' đã có sẵn CSS margin-top: auto từ file style cũ
     {
       path: "/profile",
       label: "Thông tin cá nhân",
@@ -64,11 +65,11 @@ const Sidebar = ({ currentPath }) => {
         <img src="Soucre/Logo.png" alt="Logo FinSmart" />
         <span className="logo-text">FinSmart</span>
       </div>
-      <nav>
+
+      <nav style={{ display: "flex", flexDirection: "column", height: "100%" }}>
         {navItems.map((item) => (
           <button
             key={item.path}
-            // Cập nhật dòng này để nhận thêm class 'user' nếu có
             className={`nav-btn ${item.className || ""} ${
               currentPath === item.path ? "active" : ""
             }`}
@@ -78,6 +79,11 @@ const Sidebar = ({ currentPath }) => {
             <span className="nav-label">{item.label}</span>
           </button>
         ))}
+
+        {/* BỎ style marginTop: auto ở đây đi */}
+        <div>
+          <SystemStatus />
+        </div>
       </nav>
     </div>
   );

@@ -32,11 +32,14 @@ const ProfilePage = () => {
         <div className="profile-card">
           <div className="profile-avatar-section">
             <div className="avatar-wrapper">
-              <img 
-                className="imageProfile" 
-                src="Soucre/Profile.jpg" 
+              <img
+                className="imageProfile"
+                src="Soucre/Profile.jpg"
                 alt="Avatar"
-                onError={(e) => {e.target.onerror = null; e.target.src = "https://via.placeholder.com/150"}} 
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = "https://via.placeholder.com/150";
+                }}
               />
             </div>
             <h2 className="profile-name">Người dùng FinSmart</h2>
@@ -53,7 +56,10 @@ const ProfilePage = () => {
               <div className="action-arrow">›</div>
             </div>
 
-            <div className="action-item" onClick={() => navigate('/forgot-password')}>
+            <div
+              className="action-item"
+              onClick={() => navigate("/forgot-password")}
+            >
               <div className="action-icon">🔒</div>
               <div className="action-info">
                 <span>Đổi mật khẩu</span>
