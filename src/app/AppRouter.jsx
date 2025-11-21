@@ -11,17 +11,16 @@ import HomePage from "../pages/HomePage";
 import TransactionsPage from "../pages/TransactionsPage";
 import ProfilePage from "../pages/ProfilePage";
 import StatisticPage from "../pages/StatisticPage";
-
+import HistoryPage from "../pages/HistoryPage";
+import EconomicalPage from "../pages/EconomicalPage";
 // Import legacy pages (will be refactored later)
 import Login from "../frontend/pages/LandingPage";
 import AI from "../frontend/pages/AI";
-import HistoryPage from "../pages/HistoryPage";
 import LandingPage from "../frontend/pages/LandingPage";
 import LoginPage from "../frontend/pages/LoginPage";
 import RegisterPage from "../frontend/pages/RegisterPage";
 import ForgotPasswordPage from "../frontend/pages/ForgotPasswordPage";
 import UpdateProfile from "../frontend/pages/UpdateProfile";
-import Economical from "../frontend/pages/Economical";
 import Preodic from "../frontend/pages/Preodic";
 
 function AppRouter() {
@@ -65,7 +64,7 @@ function AppRouter() {
           path="/economical"
           element={
             <ProtectedRoute>
-              <Economical />
+              <EconomicalPage />
             </ProtectedRoute>
           }
         />

@@ -15,4 +15,6 @@ export const QUERY_KEYS = {
     BAR: (userId, filter) => ["statistic", "bar", userId, filter],
     LINE: (userId, filter) => ["statistic", "line", userId, filter],
   },
+
+  GOALS: (userId) => ["goals", userId],
 };
