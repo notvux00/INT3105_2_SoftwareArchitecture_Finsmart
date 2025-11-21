@@ -13,7 +13,6 @@ const PeriodicDashboard = () => {
     addPeriodic,
     updatePeriodic,
     deletePeriodic,
-    isLoading,
     isAdding,
     isUpdating,
   } = usePeriodic(userId);
@@ -34,19 +33,12 @@ const PeriodicDashboard = () => {
   const [editPeriodic, setEditPeriodic] = useState(null);
 
   const getDaysLeft = (endDateStr) => {
-    if (!endDateStr) return 0;
     const end = new Date(endDateStr);
     const today = new Date();
     end.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
     const diffTime = end - today;
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
-
-  // Helper format ngày cho input date (yyyy-MM-dd)
-  const formatDateForInput = (isoString) => {
-    if (!isoString) return "";
-    return isoString.split("T")[0];
   };
 
   useEffect(() => {
@@ -133,8 +125,8 @@ const PeriodicDashboard = () => {
       name: item.name,
       amount: item.amount,
       frequency: item.frequency,
-      startDate: formatDateForInput(item.startDate) || item.startDate,
-      endDate: formatDateForInput(item.endDate) || item.endDate,
+      startDate: new Date(item.startDate).toISOString().split("T")[0],
+      endDate: new Date(item.endDate).toISOString().split("T")[0],
       status: item.status,
     });
     setShowEditForm(true);
@@ -147,26 +139,24 @@ const PeriodicDashboard = () => {
     return true;
   });
 
-  if (isLoading) {
-    return (
-      <div
-        className="periodic-main-content"
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100vh",
-        }}
-      >
-        <h3>Đang tải dữ liệu...</h3>
-      </div>
-    );
-  }
-
   return (
-    <div className="periodic-main-content">
-      {/* KHỐI 1: BẢNG DANH SÁCH */}
-      <div className="periodic-table-container">
+    // Flex container chính
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "row",
+        width: "100%",
+        overflowX: "auto",
+        gap: "20px",
+        padding: "20px",
+      }}
+    >
+      {/* KHỐI 1: BẢNG DANH SÁCH (Thu gọn lại - flex: 3 ~ 60%) */}
+      <div
+        className="periodic-table-container"
+        style={{ flex: 3, margin: 0, maxWidth: "none" }}
+      >
         <div className="table-header">
           <h2>Danh sách định kỳ</h2>
           <div className="filter-container">
@@ -188,18 +178,18 @@ const PeriodicDashboard = () => {
             className="btnpre add-btn"
             onClick={() => setShowAddForm(true)}
           >
-            + Thêm định kỳ
+            + Thêm
           </button>
         </div>
 
         <table className="periodic-table">
           <thead>
             <tr>
-              <th>Tên định kỳ</th>
+              <th>Tên</th>
               <th>Số tiền</th>
               <th>Tần suất</th>
-              <th>Ngày bắt đầu</th>
-              <th>Ngày kết thúc</th>
+              <th>Bắt đầu</th>
+              <th>Kết thúc</th>
               <th>Trạng thái</th>
               <th>Hành động</th>
             </tr>
@@ -222,7 +212,7 @@ const PeriodicDashboard = () => {
                   </td>
                   <td>{new Date(item.endDate).toLocaleDateString("vi-VN")}</td>
                   <td data-status={item.status}>{item.status}</td>
-                  <td>
+                  <td style={{ display: "flex", gap: "5px" }}>
                     <button
                       className="btnpre edit-btn"
                       onClick={() => openEditForm(item)}
@@ -243,8 +233,11 @@ const PeriodicDashboard = () => {
         </table>
       </div>
 
-      {/* KHỐI 2: NHẮC NHỞ */}
-      <div className="periodic-notice">
+      {/* KHỐI 2: NHẮC NHỞ (Tăng chiều rộng - flex: 2 ~ 40%) */}
+      <div
+        className="periodic-notice"
+        style={{ flex: 2, margin: 0, maxWidth: "none", height: "fit-content" }}
+      >
         <h2>Nhắc nhở</h2>
         {filteredData.filter(
           (i) =>
@@ -273,13 +266,10 @@ const PeriodicDashboard = () => {
         )}
       </div>
 
-      {/* MODAL THÊM (Sử dụng đúng class periodic-overlay) */}
+      {/* MODAL THÊM */}
       {showAddForm && (
-        <div className="periodic-overlay" onClick={() => setShowAddForm(false)}>
-          <div
-            className="periodic-modal-content"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="overlay" onClick={() => setShowAddForm(false)}>
+          <div className="form-container" onClick={(e) => e.stopPropagation()}>
             <h2>Thêm định kỳ mới</h2>
             <form onSubmit={handleAddSubmit}>
               <div className="form-group">
@@ -399,14 +389,8 @@ const PeriodicDashboard = () => {
 
       {/* MODAL SỬA */}
       {showEditForm && editPeriodic && (
-        <div
-          className="periodic-overlay-dark"
-          onClick={() => setShowEditForm(false)}
-        >
-          <div
-            className="periodic-modal-content"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="overlay2" onClick={() => setShowEditForm(false)}>
+          <div className="form-container" onClick={(e) => e.stopPropagation()}>
             <h2>Chỉnh sửa định kỳ</h2>
             <form onSubmit={handleEditSubmit}>
               <div className="form-group">
