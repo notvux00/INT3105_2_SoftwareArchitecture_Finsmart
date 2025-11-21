@@ -2,7 +2,7 @@
  * Transaction entity API layer
  * Handles all transaction-related database operations
  */
-import { supabase } from '../../../shared';
+import { supabase } from "../../../shared";
 
 export const transactionRepository = {
   // Fetch transaction history for a user
@@ -60,7 +60,10 @@ export const transactionRepository = {
     if (transactionError) throw transactionError;
 
     const incomeTotal = incomeDataRaw.reduce((sum, i) => sum + i.amount, 0);
-    const expenseTotal = transactionDataRaw.reduce((sum, t) => sum + t.amount, 0);
+    const expenseTotal = transactionDataRaw.reduce(
+      (sum, t) => sum + t.amount,
+      0
+    );
 
     const dateMap = {};
 
@@ -145,5 +148,50 @@ export const transactionRepository = {
       totalIncome: incomeTotal,
       totalExpense: expenseTotal,
     };
+  },
+
+  async fetchAllTransactions(userId, { startDate, endDate } = {}) {
+    // 1. Query Income
+    let incomeQuery = supabase
+      .from("income")
+      .select("category, amount, created_at, note") // Lấy thêm field 'note'
+      .eq("user_id", userId);
+
+    if (startDate) incomeQuery = incomeQuery.gte("created_at", startDate);
+    if (endDate) incomeQuery = incomeQuery.lte("created_at", endDate);
+
+    // 2. Query Expense
+    let expenseQuery = supabase
+      .from("transactions")
+      .select("category, amount, created_at, note")
+      .eq("user_id", userId);
+
+    if (startDate) expenseQuery = expenseQuery.gte("created_at", startDate);
+    if (endDate) expenseQuery = expenseQuery.lte("created_at", endDate);
+
+    // Chạy song song
+    const [incomeRes, expenseRes] = await Promise.all([
+      incomeQuery,
+      expenseQuery,
+    ]);
+
+    if (incomeRes.error || expenseRes.error) {
+      console.error(
+        "Error fetching history full:",
+        incomeRes.error || expenseRes.error
+      );
+      throw new Error("Lỗi tải dữ liệu lịch sử");
+    }
+
+    const incomes = incomeRes.data.map((item) => ({ ...item, type: "income" }));
+    const expenses = expenseRes.data.map((item) => ({
+      ...item,
+      type: "expense",
+    }));
+
+    // Gộp và sắp xếp giảm dần (mới nhất lên đầu)
+    return [...incomes, ...expenses].sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    );
   },
 };

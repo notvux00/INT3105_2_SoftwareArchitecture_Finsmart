@@ -15,7 +15,7 @@ import StatisticPage from "../pages/StatisticPage";
 // Import legacy pages (will be refactored later)
 import Login from "../frontend/pages/LandingPage";
 import AI from "../frontend/pages/AI";
-import History from "../frontend/pages/History";
+import HistoryPage from "../pages/HistoryPage";
 import LandingPage from "../frontend/pages/LandingPage";
 import LoginPage from "../frontend/pages/LoginPage";
 import RegisterPage from "../frontend/pages/RegisterPage";
@@ -89,7 +89,7 @@ function AppRouter() {
           path="/history"
           element={
             <ProtectedRoute>
-              <History />
+              <HistoryPage />
             </ProtectedRoute>
           }
         />
