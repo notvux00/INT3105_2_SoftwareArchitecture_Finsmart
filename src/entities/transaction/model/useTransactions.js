@@ -55,18 +55,15 @@ export const useTransactionHistory = (userId, filters) => {
   const {
     data: transactions = [],
     isLoading,
+    isError, // 1. Lấy isError từ useQuery
     refetch,
   } = useQuery({
-    // Key cache thay đổi theo filter. Ví dụ: ['transactions', 'full', 123, {startDate: '...'}]
-    // Khi filter đổi, React Query tự động gọi lại API mới.
     queryKey: ["transactions", "full", userId, filters],
-
     queryFn: () => transactionRepository.fetchAllTransactions(userId, filters),
-
     enabled: !!userId,
-    staleTime: 0, // Với trang lịch sử filter, ta nên để 0 để luôn đảm bảo chính xác khi đổi ngày
-    keepPreviousData: true, // Giữ data cũ hiển thị trong lúc đang load data mới (tránh giật)
+    staleTime: 0,
+    keepPreviousData: true,
   });
 
-  return { transactions, isLoading, refetch };
+  return { transactions, isLoading, isError, refetch }; // 2. Return isError
 };

@@ -183,8 +183,11 @@ export const transactionRepository = {
       throw new Error("Lỗi tải dữ liệu lịch sử");
     }
 
-    const incomes = incomeRes.data.map((item) => ({ ...item, type: "income" }));
-    const expenses = expenseRes.data.map((item) => ({
+    const incomes = (incomeRes.data || []).map((item) => ({
+      ...item,
+      type: "income",
+    }));
+    const expenses = (expenseRes.data || []).map((item) => ({
       ...item,
       type: "expense",
     }));

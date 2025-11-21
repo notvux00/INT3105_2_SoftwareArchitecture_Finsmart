@@ -1,42 +1,39 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react"; // 1. Thêm useMemo
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../shared/hooks";
-import { useTransactionHistory } from "../entities/transaction"; // Hook mới chúng ta vừa làm
+import { useTransactionHistory } from "../entities/transaction";
 import { Sidebar } from "../shared/ui";
-import "../frontend/pages/History.css"; // Tạm dùng CSS cũ để giữ giao diện
+import "../frontend/pages/History.css";
+import "../frontend/pages/Statistic.css"; // 2. Import thêm file này để lấy class bodyStatistic và sidebarhome
 
 const HistoryPage = () => {
   const navigate = useNavigate();
   const { userId } = useAuth();
 
-  // State quản lý bộ lọc
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  // Hàm tạo object filter để truyền vào Hook
-  // Hook sẽ tự động gọi lại API khi object này thay đổi
-  const getFilterParams = () => {
-    let filters = {};
-    if (startDate) filters.startDate = new Date(startDate).toISOString();
+  // 3. SỬA LỖI QUAN TRỌNG: Dùng useMemo để tránh vòng lặp vô tận
+  const filters = useMemo(() => {
+    let params = {};
+    if (startDate) params.startDate = new Date(startDate).toISOString();
     if (endDate) {
-      // Với ngày kết thúc, ta cần lấy đến cuối ngày (23:59:59)
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
-      filters.endDate = end.toISOString();
+      params.endDate = end.toISOString();
     }
-    return filters;
-  };
+    return params;
+  }, [startDate, endDate]); // Chỉ tạo lại object khi ngày thay đổi
 
-  // Gọi Hook: Dữ liệu sẽ được Cache và tự động cập nhật
+  // Truyền filters đã memoize vào hook
   const { transactions, isLoading, isError } = useTransactionHistory(
     userId,
-    getFilterParams()
+    filters
   );
 
   return (
-    <div className="bodyStatistic" style={{ display: "flex" }}>
-      {" "}
-      {/* Layout Flex giống Statistic */}
+    // Class bodyStatistic giờ đã có tác dụng nhờ import CSS ở trên
+    <div className="bodyStatistic">
       <Sidebar currentPath="/history" />
       <div
         className="history"
@@ -50,7 +47,7 @@ const HistoryPage = () => {
       >
         <h3>Lịch Sử Giao Dịch</h3>
 
-        {/* Khu vực bộ lọc */}
+        {/* ... (Phần còn lại giữ nguyên) ... */}
         <div className="filters">
           <label>
             Từ ngày:
@@ -70,7 +67,6 @@ const HistoryPage = () => {
           </label>
         </div>
 
-        {/* Danh sách giao dịch */}
         <div
           className="transaction-list-hist"
           style={{ flex: 1, overflowY: "auto" }}
@@ -86,32 +82,26 @@ const HistoryPage = () => {
           ) : transactions.length > 0 ? (
             transactions.map((t, index) => (
               <div key={index} className="transaction-hist">
-                {/* Icon hoặc Tên danh mục */}
+                {/* ... Code render item giữ nguyên ... */}
                 <div
                   style={{ display: "flex", alignItems: "center", gap: "10px" }}
                 >
                   <p style={{ margin: 0 }}>{t.category}</p>
                 </div>
-
-                {/* Ghi chú (nếu có) */}
                 {t.note && (
                   <small className="note" style={{ color: "#888" }}>
                     {t.note}
                   </small>
                 )}
-
-                {/* Ngày tháng */}
                 <span>
                   {new Date(t.created_at).toLocaleString("vi-VN", {
-                    hour: "2-digit",
-                    minute: "2-digit",
                     day: "2-digit",
                     month: "2-digit",
                     year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
                 </span>
-
-                {/* Số tiền (Xanh nếu thu, Đỏ nếu chi) */}
                 <span className={t.type === "income" ? "positive" : "negative"}>
                   {t.type === "expense" ? "-" : "+"}
                   {t.amount.toLocaleString("vi-VN")}

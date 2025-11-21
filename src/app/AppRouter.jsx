@@ -13,6 +13,7 @@ import ProfilePage from "../pages/ProfilePage";
 import StatisticPage from "../pages/StatisticPage";
 import PeriodicPage from "../pages/PeriodicPage";
 import EconomicalPage from "../pages/EconomicalPage";
+import HistoryPage from "../pages/HistoryPage";
 
 // Import Auth Pages (New)
 import LandingPage from "../pages/auth/LandingPage";
@@ -97,6 +98,14 @@ function AppRouter() {
           element={
             <ProtectedRoute>
               <UpdateProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/history"
+          element={
+            <ProtectedRoute>
+              <HistoryPage />
             </ProtectedRoute>
           }
         />
