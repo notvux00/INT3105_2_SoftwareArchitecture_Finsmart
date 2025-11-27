@@ -1,5 +1,5 @@
 import { supabase } from "../../../shared";
-
+import {retryWrapper} from "../../retryWrapper"
 async function retryWrapper(fn, maxRetries = 3, delayMs = 500) {
   for (let i = 0; i < maxRetries; i++) {
     try {
@@ -38,7 +38,6 @@ export const economicalRepository = {
 
   // Thêm mục tiêu mới
   async addGoal(goalData) {
-    const apiCall = async () => {
       console.log("da them goal")
       const { data, error } = await supabase
         .from("economical")
@@ -48,15 +47,11 @@ export const economicalRepository = {
 
       if (error) throw error;
       return data;
-    };
-
-    return retryWrapper(apiCall);
   },
 
   // Cập nhật thông tin mục tiêu (Sửa tên, hạn, số tiền đích)
   async updateGoal(goalId, updates) {
     console.log("da update goal")
-    const apiCall = async () => {
       const { data, error } = await supabase
         .from("economical")
         .update(updates)
@@ -66,9 +61,6 @@ export const economicalRepository = {
 
       if (error) throw error;
       return data;
-    };
-
-    return retryWrapper(apiCall);
   },
 
   // Xóa mục tiêu
@@ -88,7 +80,6 @@ export const economicalRepository = {
 
   // Nạp tiền vào mục tiêu (Cập nhật số tiền hiện tại)
   async depositToGoal(goalId, newAmount, newStatus) {
-    const apiCall = async () => {
       console.log("da nap tien")
       const { data, error } = await supabase
         .from("economical")
@@ -99,8 +90,5 @@ export const economicalRepository = {
 
       if (error) throw error;
       return data;
-    };
-
-    return retryWrapper(apiCall);
   },
 };

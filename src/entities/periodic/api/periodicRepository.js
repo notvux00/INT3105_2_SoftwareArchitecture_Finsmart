@@ -56,7 +56,6 @@ export const periodicRepository = {
 
   // Thêm mới
   async addPeriodic(periodicData) {
-    const apiCall = async () => {
       console.log("retry ok")
       const nextExecution = calculateNextExecution(
         periodicData.frequency === "3 phút" ? new Date() : periodicData.startDate,
@@ -84,15 +83,11 @@ export const periodicRepository = {
 
       if (error) throw error;
       return data;
-    };
-    
-    return retryWrapper(apiCall);
   },
 
   // Cập nhật
 async updatePeriodic(id, updates) {
   console.log("retry ok")
-    const apiCall = async () => {
       const { data, error } = await supabase
         .from("preodic")
         .update({
@@ -109,9 +104,6 @@ async updatePeriodic(id, updates) {
 
       if (error) throw error;
       return data;
-    };
-    
-    return retryWrapper(apiCall);
   },
 
   // Xóa
@@ -123,7 +115,6 @@ async updatePeriodic(id, updates) {
       return true;
     };
     
-    // Áp dụng Retry
     return retryWrapper(apiCall);
   },
 };

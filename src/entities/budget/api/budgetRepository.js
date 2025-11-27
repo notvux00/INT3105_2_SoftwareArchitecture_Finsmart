@@ -4,6 +4,9 @@
  */
 import { supabase } from '../../../shared';
 import { API_ENDPOINTS } from '../../../shared/config';
+import {retryWrapper} from "../../retryWrapper"
+import {rateLimitCheck} from "../../rateLimitAndRetry"
+
 
 async function retryWrapper(fn, maxRetries = 3, delayMs = 500) {
   for (let i = 0; i < maxRetries; i++) {
@@ -24,6 +27,7 @@ async function retryWrapper(fn, maxRetries = 3, delayMs = 500) {
 export const budgetRepository = {
   async fetchBudgets(userId) {
     console.log("vao dc")
+    await rateLimitCheck(userId);
     const apiCall = async () => {
       const { data, error } = await supabase
         .from(API_ENDPOINTS.LIMITS)
@@ -33,12 +37,12 @@ export const budgetRepository = {
       if (error) throw error;
       return data || [];
     };
+
     return retryWrapper(apiCall); 
   },
 
   async addBudget(budgetData) {
     console.log("them dc")
-    const apiCall = async () => {
       const { data, error } = await supabase
         .from(API_ENDPOINTS.LIMITS)
         .insert([budgetData])
@@ -46,14 +50,11 @@ export const budgetRepository = {
 
       if (error) throw error;
       return data[0];
-    };
-    return retryWrapper(apiCall);
   },
 
   // Update budget
 async updateBudget(limitId, updateData) {
   console.log("update dc")
-    const apiCall = async () => {
       const { data, error } = await supabase
         .from(API_ENDPOINTS.LIMITS)
         .update(updateData)
@@ -62,9 +63,6 @@ async updateBudget(limitId, updateData) {
 
       if (error) throw error;
       return data[0];
-    };
-    
-    return retryWrapper(apiCall);
   },
 
   // Delete budget
