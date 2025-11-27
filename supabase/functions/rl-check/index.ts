@@ -13,7 +13,6 @@ const SERVICE_KEY = Deno.env.get('SERVICE_KEY')!;
 const UPSTASH_REDIS_URL = Deno.env.get('REDIS_REST_URL')!;
 const UPSTASH_REDIS_TOKEN = Deno.env.get('REDIS_REST_TOKEN')!;
 
-// Khởi tạo Supabase Admin Client và Upstash Redis
 const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_KEY);
 
 const redis = new Redis({
@@ -31,19 +30,20 @@ async function checkRateLimit(userId: string): Promise<boolean> {
     const redisKey = `rate-limit:user:${userId}:${windowId}`; 
 
     try {
-        const pipeline = redis.pipeline();
-        pipeline.incr(redisKey);
-        pipeline.expire(redisKey, WINDOW_SECONDS);
+    const currentCount = await redis.incr(redisKey) as number;
+    
+    const ttl = await redis.ttl(redisKey) as number;
+    if (ttl === -1) {
+      await redis.expire(redisKey, WINDOW_SECONDS);
+    }
+    
+    console.log(`User ${userId} - Request: ${currentCount}/${MAX_REQUESTS}`);
         
-        // Execute pipeline và lấy kết quả INCR (giá trị mới của bộ đếm)
-        const [incrResult] = await pipeline.flush();
-        const currentCount = incrResult.value as number;
-
         if (currentCount > MAX_REQUESTS) {
-            return false; // Bị giới hạn
+            return false;
         }
-        console.log("ok rate limting cho qua")
-        return true; // Được phép
+        console.log("ok rate limiting cho qua")
+        return true;
         
     } catch (error) {
         console.error("Redis error, skipping Rate Limit check:", error);
@@ -51,24 +51,63 @@ async function checkRateLimit(userId: string): Promise<boolean> {
     }
 }
 
-
 Deno.serve(async (req) => {
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders });
+    }
+
     try {
         const { userId } = await req.json();
 
         if (!userId) {
-            return new Response(JSON.stringify({ error: "Missing userId" }), { status: 400 });
+            return new Response(
+                JSON.stringify({ error: "Missing userId" }), 
+                { 
+                    status: 400,
+                    headers: { 
+                        ...corsHeaders, 
+                        'Content-Type': 'application/json' 
+                    }
+                }
+            );
         }
 
         const isAllowed = await checkRateLimit(userId);
 
         if (!isAllowed) {
-            return new Response("Rate Limit Exceeded", { status: 429 });
+            return new Response(
+                JSON.stringify({ error: "Rate Limit Exceeded" }), 
+                { 
+                    status: 429,
+                    headers: { 
+                        ...corsHeaders, 
+                        'Content-Type': 'application/json' 
+                    }
+                }
+            );
         }
 
-        return new Response("Allowed", { status: 200 });
+        return new Response(
+            JSON.stringify({ success: true, message: "Allowed" }), 
+            { 
+                status: 200,
+                headers: { 
+                    ...corsHeaders, 
+                    'Content-Type': 'application/json' 
+                }
+            }
+        );
 
     } catch (e) {
-        return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500 });
+        return new Response(
+            JSON.stringify({ error: (e as Error).message }), 
+            { 
+                status: 500,
+                headers: { 
+                    ...corsHeaders, 
+                    'Content-Type': 'application/json' 
+                }
+            }
+        );
     }
 });

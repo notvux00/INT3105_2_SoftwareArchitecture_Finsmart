@@ -5,29 +5,12 @@
 import { supabase } from '../../../shared';
 import { API_ENDPOINTS } from '../../../shared/config';
 import {retryWrapper} from "../../retryWrapper"
-import {rateLimitCheck} from "../../rateLimitAndRetry"
-
-
-async function retryWrapper(fn, maxRetries = 3, delayMs = 500) {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      console.log("dang o lan thu i");
-      return await fn(); 
-    } catch (error) {
-      if (i === maxRetries - 1) {
-        console.error(`API failed after ${maxRetries} attempts.`, error);
-        throw error;
-      }
-      console.warn(`Attempt ${i + 1}/${maxRetries} failed. Retrying in ${delayMs}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delayMs));
-    }
-  }
-}
+import {rateLimitCheck} from "../../rateLimiting"
 
 export const budgetRepository = {
   async fetchBudgets(userId) {
     console.log("vao dc")
-    await rateLimitCheck(userId);
+    const x = await rateLimitCheck(userId);
     const apiCall = async () => {
       const { data, error } = await supabase
         .from(API_ENDPOINTS.LIMITS)
