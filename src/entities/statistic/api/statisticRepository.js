@@ -1,10 +1,12 @@
 import { supabase } from '../../../shared';
 import {retryWrapper} from "../../retryWrapper"
+import {rateLimitCheck} from "../../rateLimiting"
 
 
 export const statisticRepository = {
   // Lấy dữ liệu chi tiêu theo danh mục từ SQL View
   async getExpensesByCategory(userId, fromDate, toDate) {
+     const x = await rateLimitCheck(userId);
     const apiCall = async () => {
       console.log("ok retry")
       let query = supabase
@@ -22,6 +24,7 @@ export const statisticRepository = {
 
   // Lấy dữ liệu thu chi theo tháng từ SQL View
   async getMonthlyStats(userId, fromDate, toDate) {
+     const x = await rateLimitCheck(userId);
     const apiCall = async () => {
       console.log("ok day")
       let query = supabase

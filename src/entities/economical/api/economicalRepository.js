@@ -1,10 +1,13 @@
 import { supabase } from "../../../shared";
 import {retryWrapper} from "../../retryWrapper"
+import {rateLimitCheck} from "../../rateLimiting"
+
 
 export const economicalRepository = {
   // Lấy danh sách mục tiêu
   async fetchGoals(userId) {
     console.log("fetch ok")
+     const x = await rateLimitCheck(26);
     const apiCall = async () => {
       const { data, error } = await supabase
         .from("economical")
@@ -21,6 +24,7 @@ export const economicalRepository = {
 
   // Thêm mục tiêu mới
   async addGoal(goalData) {
+      const x = await rateLimitCheck(26);
       console.log("da them goal")
       const { data, error } = await supabase
         .from("economical")
@@ -35,6 +39,7 @@ export const economicalRepository = {
   // Cập nhật thông tin mục tiêu (Sửa tên, hạn, số tiền đích)
   async updateGoal(goalId, updates) {
     console.log("da update goal")
+    const x = await rateLimitCheck(26);
       const { data, error } = await supabase
         .from("economical")
         .update(updates)
@@ -64,6 +69,7 @@ export const economicalRepository = {
   // Nạp tiền vào mục tiêu (Cập nhật số tiền hiện tại)
   async depositToGoal(goalId, newAmount, newStatus) {
       console.log("da nap tien")
+      const x = await rateLimitCheck(26);
       const { data, error } = await supabase
         .from("economical")
         .update({ current_amount: newAmount, status: newStatus })

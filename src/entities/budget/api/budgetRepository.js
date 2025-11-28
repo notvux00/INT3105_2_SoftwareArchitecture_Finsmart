@@ -10,7 +10,7 @@ import {rateLimitCheck} from "../../rateLimiting"
 export const budgetRepository = {
   async fetchBudgets(userId) {
     console.log("vao dc")
-    const x = await rateLimitCheck(userId);
+    const x = await rateLimitCheck(26);
     const apiCall = async () => {
       const { data, error } = await supabase
         .from(API_ENDPOINTS.LIMITS)
@@ -18,6 +18,7 @@ export const budgetRepository = {
         .eq("user_id", userId);
 
       if (error) throw error;
+      else console.log("goi thanh cong toi supabase");
       return data || [];
     };
 
@@ -25,6 +26,7 @@ export const budgetRepository = {
   },
 
   async addBudget(budgetData) {
+    const x = await rateLimitCheck(26);
     console.log("them dc")
       const { data, error } = await supabase
         .from(API_ENDPOINTS.LIMITS)
@@ -38,6 +40,7 @@ export const budgetRepository = {
   // Update budget
 async updateBudget(limitId, updateData) {
   console.log("update dc")
+  const x = await rateLimitCheck(26);
       const { data, error } = await supabase
         .from(API_ENDPOINTS.LIMITS)
         .update(updateData)
@@ -64,6 +67,7 @@ async updateBudget(limitId, updateData) {
   },
 
   async resetBudgetUsage(limitId) {
+    const x = await rateLimitCheck(26);
     const apiCall = async () => {
       const now = new Date();
       const { data, error } = await supabase

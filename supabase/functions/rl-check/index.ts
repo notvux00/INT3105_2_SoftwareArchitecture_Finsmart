@@ -20,36 +20,46 @@ const redis = new Redis({
     token: UPSTASH_REDIS_TOKEN,
 });
 
-const MAX_REQUESTS = 100;
+const MAX_REQUESTS = 500;
 const WINDOW_SECONDS = 60; 
 
-async function checkRateLimit(userId: string): Promise<boolean> {
-    if (!userId) return false;
-    
-    const windowId = Math.floor(Date.now() / (WINDOW_SECONDS * 1000));
-    const redisKey = `rate-limit:user:${userId}:${windowId}`; 
+async function checkRateLimit(userId: string | null, req: Request): Promise<boolean> {
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+    req.headers.get("cf-connecting-ip") ??
+    req.headers.get("x-real-ip") ??
+    "unknown";
 
-    try {
-    const currentCount = await redis.incr(redisKey) as number;
-    
-    const ttl = await redis.ttl(redisKey) as number;
+  console.log("Client IP:", ip);
+  const identityKey = userId ? `u:${userId}-ip:${ip}` : `ip:${ip}`;
+
+  const windowId = Math.floor(Date.now() / (WINDOW_SECONDS * 1000));
+  const redisKey = `rate-limit:${identityKey}:${windowId}`;
+
+  try {
+    const currentCount = (await redis.incr(redisKey)) as number;
+
+    const ttl = (await redis.ttl(redisKey)) as number;
     if (ttl === -1) {
       await redis.expire(redisKey, WINDOW_SECONDS);
     }
-    
-    console.log(`User ${userId} - Request: ${currentCount}/${MAX_REQUESTS}`);
-        
-        if (currentCount > MAX_REQUESTS) {
-            return false;
-        }
-        console.log("ok rate limiting cho qua")
-        return true;
-        
-    } catch (error) {
-        console.error("Redis error, skipping Rate Limit check:", error);
-        return true; 
+
+    console.log(
+      `[RateLimit] ${identityKey} -> ${currentCount}/${MAX_REQUESTS}`
+    );
+
+    if (currentCount > MAX_REQUESTS) {
+      console.log(">>> Rate limit exceeded → return false");
+      return false;
     }
+
+    return true;
+  } catch (err) {
+    console.error("Redis error → Skip rate limit", err);
+    return true;
+  }
 }
+
 
 Deno.serve(async (req) => {
     if (req.method === 'OPTIONS') {
@@ -72,7 +82,7 @@ Deno.serve(async (req) => {
             );
         }
 
-        const isAllowed = await checkRateLimit(userId);
+        const isAllowed = await checkRateLimit(userId, req);
 
         if (!isAllowed) {
             return new Response(

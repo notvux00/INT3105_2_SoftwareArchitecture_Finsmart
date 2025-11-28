@@ -15,10 +15,11 @@ export async function rateLimitCheck(userId) {
         
         const error = new Error('Rate Limit Exceeded (429)');
         error.status = 429; 
-        
+        console.log("nem loi ra luon")
         throw error; 
     }
     else {
         console.log("ok bu");
+        return 1;
     }
 }

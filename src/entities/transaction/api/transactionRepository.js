@@ -4,6 +4,8 @@
  */
 import { supabase } from "../../../shared";
 import {retryWrapper} from "../../retryWrapper"
+import {rateLimitCheck} from "../../rateLimiting"
+
 
 
 export const transactionRepository = {
@@ -47,6 +49,7 @@ export const transactionRepository = {
   // Fetch chart data for a user
   async fetchChartData(userId) {
     console.log("ok ok ")
+     const x = await rateLimitCheck(26);
     const apiCall = async () => {
       console.log("dc r dddddd")
       const { data: incomeDataRaw, error: incomeError } = await supabase
@@ -97,6 +100,7 @@ export const transactionRepository = {
 
   // Fetch chart data for the last month
   async fetchChartDataDefault(userId) {
+     const x = await rateLimitCheck(26);
     const { data: incomeDataRaw, error: incomeError } = await supabase
       .from("income")
       .select("amount, created_at")
@@ -155,6 +159,7 @@ export const transactionRepository = {
 
   async fetchAllTransactions(userId, { startDate, endDate } = {}) {
     console.log(" vao dc fetcch all")
+    const x = await rateLimitCheck(26);
     const apiCall = async () => {
       console.log("vao dc fetchhh")
         let incomeQuery = supabase
