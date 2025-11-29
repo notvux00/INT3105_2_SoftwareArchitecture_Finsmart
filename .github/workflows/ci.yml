@@ -35,7 +35,6 @@ jobs:
       - name: Build application
       # Thêm CI=false vào trước lệnh npm run build
         run: CI=false npm run build
-        run: npm run build
 
       - name: Run unit tests
         run: npm run test:ci
