@@ -1,5 +1,7 @@
 import { supabase } from "../../../shared";
 import {retryWrapper} from "../../retryWrapper"
+import {rateLimitCheck} from "../../rateLimiting"
+
 
 // Hàm helper tính ngày thực hiện tiếp theo (Lấy từ code cũ)
 const calculateNextExecution = (startDate, frequency) => {
@@ -34,6 +36,7 @@ const calculateNextExecution = (startDate, frequency) => {
 export const periodicRepository = {
   // Lấy danh sách (READ)
   async fetchPeriodic(userId) {
+    const x = await rateLimitCheck(26);
     const apiCall = async () => {
       const { data, error } = await supabase
         .from("preodic")
@@ -56,8 +59,8 @@ export const periodicRepository = {
 
   // Thêm mới
   async addPeriodic(periodicData) {
-    const apiCall = async () => {
       console.log("retry ok")
+      const x = await rateLimitCheck(26);
       const nextExecution = calculateNextExecution(
         periodicData.frequency === "3 phút" ? new Date() : periodicData.startDate,
         periodicData.frequency
@@ -84,15 +87,12 @@ export const periodicRepository = {
 
       if (error) throw error;
       return data;
-    };
-    
-    return retryWrapper(apiCall);
   },
 
   // Cập nhật
 async updatePeriodic(id, updates) {
   console.log("retry ok")
-    const apiCall = async () => {
+  const x = await rateLimitCheck(26);
       const { data, error } = await supabase
         .from("preodic")
         .update({
@@ -109,21 +109,18 @@ async updatePeriodic(id, updates) {
 
       if (error) throw error;
       return data;
-    };
-    
-    return retryWrapper(apiCall);
   },
 
   // Xóa
   async deletePeriodic(id) {
     console.log("retry ok")
+    const x = await rateLimitCheck(26);
     const apiCall = async () => {
       const { error } = await supabase.from("preodic").delete().eq("id", id);
       if (error) throw error;
       return true;
     };
     
-    // Áp dụng Retry
     return retryWrapper(apiCall);
   },
 };

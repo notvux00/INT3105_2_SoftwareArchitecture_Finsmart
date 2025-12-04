@@ -48,7 +48,6 @@ export const userRepository = {
 
   // Update user's wallet balance
   async updateWalletBalance(walletId, newBalance) {
-    const apiCall = async () => { 
     const { error } = await supabase
       .from("wallets")
       .update({ balance: newBalance })
@@ -58,8 +57,6 @@ export const userRepository = {
       console.error("Error updating wallet balance:", error);
       throw error;
     }
-  };
-  return retryWrapper(apiCall)
 },
 
   // Get user's wallet ID

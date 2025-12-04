@@ -4,26 +4,13 @@
  */
 import { supabase } from '../../../shared';
 import { API_ENDPOINTS } from '../../../shared/config';
-
-async function retryWrapper(fn, maxRetries = 3, delayMs = 500) {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      console.log("dang o lan thu i");
-      return await fn(); 
-    } catch (error) {
-      if (i === maxRetries - 1) {
-        console.error(`API failed after ${maxRetries} attempts.`, error);
-        throw error;
-      }
-      console.warn(`Attempt ${i + 1}/${maxRetries} failed. Retrying in ${delayMs}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delayMs));
-    }
-  }
-}
+import {retryWrapper} from "../../retryWrapper"
+import {rateLimitCheck} from "../../rateLimiting"
 
 export const budgetRepository = {
   async fetchBudgets(userId) {
     console.log("vao dc")
+    const x = await rateLimitCheck(26);
     const apiCall = async () => {
       const { data, error } = await supabase
         .from(API_ENDPOINTS.LIMITS)
@@ -31,14 +18,16 @@ export const budgetRepository = {
         .eq("user_id", userId);
 
       if (error) throw error;
+      else console.log("goi thanh cong toi supabase");
       return data || [];
     };
+
     return retryWrapper(apiCall); 
   },
 
   async addBudget(budgetData) {
+    const x = await rateLimitCheck(26);
     console.log("them dc")
-    const apiCall = async () => {
       const { data, error } = await supabase
         .from(API_ENDPOINTS.LIMITS)
         .insert([budgetData])
@@ -46,14 +35,12 @@ export const budgetRepository = {
 
       if (error) throw error;
       return data[0];
-    };
-    return retryWrapper(apiCall);
   },
 
   // Update budget
 async updateBudget(limitId, updateData) {
   console.log("update dc")
-    const apiCall = async () => {
+  const x = await rateLimitCheck(26);
       const { data, error } = await supabase
         .from(API_ENDPOINTS.LIMITS)
         .update(updateData)
@@ -62,9 +49,6 @@ async updateBudget(limitId, updateData) {
 
       if (error) throw error;
       return data[0];
-    };
-    
-    return retryWrapper(apiCall);
   },
 
   // Delete budget
@@ -83,6 +67,7 @@ async updateBudget(limitId, updateData) {
   },
 
   async resetBudgetUsage(limitId) {
+    const x = await rateLimitCheck(26);
     const apiCall = async () => {
       const now = new Date();
       const { data, error } = await supabase

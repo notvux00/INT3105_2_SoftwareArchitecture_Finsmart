@@ -10,7 +10,7 @@ export const useBudgets = (userId) => {
 
     try {
       const cached = localStorage.getItem("budgets");
-      if (cached) {
+      if (cached || cached !== []) {
         setBudgets(JSON.parse(cached));
       }
 
