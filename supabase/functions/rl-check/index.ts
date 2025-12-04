@@ -21,7 +21,7 @@ const redis = new Redis({
 });
 
 const MAX_REQUESTS = 500;
-const WINDOW_SECONDS = 60; 
+const WINDOW_SECONDS = 120; 
 
 async function checkRateLimit(userId: string | null, req: Request): Promise<boolean> {
   const ip =

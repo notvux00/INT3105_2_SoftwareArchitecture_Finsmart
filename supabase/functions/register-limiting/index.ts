@@ -37,8 +37,12 @@ async function incrementRateLimit_DangKy(ipAddress: string): Promise<void> {
     const WINDOW_SECONDS = 180; // 3p
 
     const attempts = await redis.incr(key) as number;
-    await redis.expire(key, WINDOW_SECONDS);
-
+    if (attempts == 1) {
+        await redis.expire(key, WINDOW_SECONDS);
+    }
+    else if (attempts <= 0) {
+        await redis.set(key, 1, { ex: WINDOW_SECONDS });
+    }
     return;
 }
 
@@ -85,6 +89,9 @@ Deno.serve(async (req) => {
             );
         }
 
+        // +1 vao rate limiting
+        await incrementRateLimit_DangKy(clientIp);
+
         // 2. TRUY VẤN CSDL VÀ XÁC THỰC BCrypt
         const { data: existingUser, error: checkError } = await supabaseAdmin
         .from("users")
@@ -129,9 +136,6 @@ Deno.serve(async (req) => {
                 }
             );
         }
-
-        // +1 vao rate limiting
-        await incrementRateLimit_DangKy(clientIp);
 
         // 5.  bú, dang ky thanh cong
         return new Response(
