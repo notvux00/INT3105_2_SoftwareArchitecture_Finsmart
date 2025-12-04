@@ -16,7 +16,8 @@ const SERVICE_KEY = Deno.env.get('SERVICE_KEY')!;
 const UPSTASH_REDIS_URL = Deno.env.get('REDIS_REST_URL')!;
 const UPSTASH_REDIS_TOKEN = Deno.env.get('REDIS_REST_TOKEN')!;
 
-const MAX_ATTEMPTS = 10;
+const MAX_ATTEMPTS_FOR_IP = 100;
+const MAX_ATTEMPTS_FOR_EU = 10;
 
 // Khởi tạo Supabase Admin Client và Upstash Redis
 const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_KEY);
@@ -25,10 +26,23 @@ const redis = new Redis({
     token: UPSTASH_REDIS_TOKEN,
 });
 
-// Hàm Rate Limiting (3 lần/2 phút, dựa trên IP)
 async function checkRateLimit(ipAddress: string): Promise<number> {
     const key = `ip_limit:${ipAddress}`;
-    const WINDOW_SECONDS = 180; // 3 phút
+    const WINDOW_SECONDS = 60 * 10; // 10 phút
+
+    // Sử dụng lệnh INCR và EXPIRE
+    const attempts = await redis.incr(key) as number; 
+    
+    const ttl = await redis.ttl(key) as number;
+    if (ttl === -1) {
+        await redis.expire(key, WINDOW_SECONDS);
+    }
+    return attempts;
+}
+
+async function checkRateLimit_EU(ipAddress: string, username: string): Promise<number> {
+    const key = `ip_limit:${ipAddress}:user:${username}`;
+    const WINDOW_SECONDS = 120; // 2 phút
 
     // Sử dụng lệnh INCR và EXPIRE
     const attempts = await redis.incr(key) as number; 
@@ -62,7 +76,7 @@ Deno.serve(async (req) => {
             || 'unknown';
 
         const attempts = await checkRateLimit(clientIp); 
-        if (attempts > MAX_ATTEMPTS) {
+        if (attempts > MAX_ATTEMPTS_FOR_IP) {
             return new Response(
                 JSON.stringify({ error: "Thử đăng nhập quá nhiều lần. Vui lòng thử lại sau 2 phút." }), 
                 { 
@@ -71,6 +85,20 @@ Deno.serve(async (req) => {
                 }
             );
         }
+
+        const attempts_EU = await checkRateLimit_EU(clientIp, username); 
+        if (attempts_EU > MAX_ATTEMPTS_FOR_EU) {
+            return new Response(
+                JSON.stringify({ error: "Thử đăng nhập quá nhiều lần. Vui lòng thử lại sau 2 phút." }), 
+                { 
+                    status: 429,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                }
+            );
+        }
+
+
+        
 
         // 2. TRUY VẤN CSDL VÀ XÁC THỰC BCrypt
         const { data, error } = await supabaseAdmin
