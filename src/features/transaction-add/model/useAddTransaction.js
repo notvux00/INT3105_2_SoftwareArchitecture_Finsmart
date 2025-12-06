@@ -35,7 +35,9 @@ export const useAddTransaction = (userId) => {
         date: new Date(transactionData.date).toISOString(),
         note: transactionData.note || null,
         type: transactionData.type, // 'thu' hoặc 'chi'
-        limit_id: transactionData.limitId || null
+        limit_id: transactionData.limitId || null,
+        // ⭐ IDEMPOTENCY KEY - Chống duplicate transaction (Redis cache 24h)
+        idempotency_key: crypto.randomUUID()
       };
       
       const token = process.env.REACT_APP_SUPABASE_ANON_KEY; 

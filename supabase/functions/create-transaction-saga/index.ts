@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.44.0';
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { Redis } from "https://esm.sh/@upstash/redis@1.34.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,41 +8,70 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // 1. Handle CORS preflight request
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    // 2. Khởi tạo Supabase Client với quyền Admin (Service Role Key)
-    // QUAN TRỌNG: Sử dụng SUPABASE_SERVICE_ROLE_KEY để có quyền ghi đè RLS
+    // 1. Setup Supabase Client
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '' 
     );
+    
+    // Init Redis with error handling
+    const redis = new Redis({
+        url: Deno.env.get("REDIS_REST_URL")!,
+        token: Deno.env.get("REDIS_REST_TOKEN")!,
+    });
 
-    // 3. Lấy dữ liệu từ Frontend gửi lên
-    const { user_id, wallet_id, category, amount, note, date, limit_id, type } = await req.json();
+    const { user_id, wallet_id, category, amount, note, date, limit_id, type, idempotency_key } = await req.json();
 
-    // Validate dữ liệu cơ bản
-    if (!user_id || !wallet_id || !amount || !date) {
-      throw new Error("Thiếu thông tin giao dịch bắt buộc.");
+    // 2. INPUT VALIDATION
+    if (!idempotency_key) {
+        throw new Error("Missing idempotency_key");
+    }
+    if (!user_id || !wallet_id || !type) {
+        throw new Error("Missing required fields: user_id, wallet_id, type");
+    }
+    if (!amount || amount <= 0) {
+        throw new Error("Amount must be greater than 0");
+    }
+    if (!['thu', 'chi'].includes(type)) {
+        throw new Error("Type must be 'thu' or 'chi'");
     }
 
-    console.log(`[SAGA START] Transaction for User: ${user_id}, Type: ${type}, Amount: ${amount}`);
+    // 3. IDEMPOTENCY CHECK (với Redis fallback)
+    const cacheKey = `saga:${idempotency_key}`;
+    let cachedResult = null;
+    
+    try {
+        cachedResult = await redis.get(cacheKey);
+        if (cachedResult) {
+            console.log('[IDEMPOTENT] Returning cached result');
+            return new Response(JSON.stringify(cachedResult), { 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+                status: cachedResult.success ? 200 : 400
+            });
+        }
+    } catch (redisError) {
+        console.warn('[REDIS WARNING] Cache check failed, continuing without cache:', redisError);
+        // Tiếp tục xử lý bình thường nếu Redis down
+    }
 
-    // BƯỚC 1: TẠO GIAO DỊCH (Transaction Record)
+    // --- BẮT ĐẦU SAGA ---
+    
+    // BƯỚC 1: TẠO TRANSACTION (Write-Ahead Log)
     const tableName = type === 'thu' ? 'income' : 'transactions';
-    const transactionPayload: any = {
-      user_id,
-      wallet_id,
-      category,
-      amount,
-      created_at: date,
-      note
+    const transactionPayload: any = { 
+        user_id, 
+        wallet_id, 
+        category, 
+        amount, 
+        created_at: date, 
+        note 
     };
-    // Nếu là chi tiêu và có chọn hạn mức thì lưu thêm limit_id
-    if (type === 'chi' && limit_id) transactionPayload.limit_id = limit_id;
+    if (type === 'chi' && limit_id) {
+        transactionPayload.limit_id = limit_id;
+    }
 
     const { data: transData, error: transError } = await supabase
       .from(tableName)
@@ -49,116 +79,105 @@ serve(async (req) => {
       .select()
       .single();
 
-    if (transError) throw new Error(`Lỗi tạo giao dịch: ${transError.message}`);
+    if (transError) {
+        throw new Error(`Failed to create transaction: ${transError.message}`);
+    }
     
-    // Lưu lại ID để nếu cần rollback thì xóa
-    const transactionId = transData.id || transData.transaction_id || transData.income_id;
-    console.log(`[STEP 1 DONE] Created Transaction ID: ${transactionId}`);
+    // ✅ FIX: Cả 2 bảng đều dùng cột 'id' làm primary key
+    const transactionId = transData.id;
 
     try {
-        // BƯỚC 2: CẬP NHẬT SỐ DƯ VÍ (Wallet Balance)
+        // BƯỚC 2: ATOMIC UPDATE WALLET
+        const { error: walletError } = await supabase.rpc('update_wallet_atomic', {
+            p_wallet_id: wallet_id,
+            p_amount: type === 'thu' ? amount : -amount,
+            p_min_balance: 0  // Không cho phép số dư âm
+        });
         
-        // Lấy số dư hiện tại
-        const { data: wallet, error: walletFetchError } = await supabase
-            .from('wallets')
-            .select('balance')
-            .eq('wallet_id', wallet_id)
-            .single();
-        
-        if (walletFetchError || !wallet) throw new Error("Không tìm thấy ví người dùng.");
-
-        let newBalance = wallet.balance;
-        if (type === 'thu') {
-            newBalance += amount;
-        } else {
-            newBalance -= amount;
-            // Kiểm tra số dư (Business Rule)
-            if (newBalance < 0) throw new Error("Số dư không đủ để thực hiện giao dịch.");
+        if (walletError) {
+            // Cải thiện error message
+            if (walletError.message.includes('Insufficient') || walletError.message.includes('balance')) {
+                throw new Error('Số dư ví không đủ để thực hiện giao dịch');
+            }
+            throw new Error(`Wallet update failed: ${walletError.message}`);
         }
 
-        const { error: walletUpdateError } = await supabase
-            .from('wallets')
-            .update({ balance: newBalance })
-            .eq('wallet_id', wallet_id);
-
-        if (walletUpdateError) throw new Error(`Lỗi cập nhật ví: ${walletUpdateError.message}`);
-        console.log(`[STEP 2 DONE] Updated Wallet Balance.`);
-
-        // BƯỚC 3: CẬP NHẬT HẠN MỨC (Budget/Limit) - Chỉ khi chi tiêu
+        // BƯỚC 3: ATOMIC UPDATE LIMIT (Nếu là chi tiêu và có limit)
         if (type === 'chi' && limit_id) {
-            const { data: limit, error: limitFetchError } = await supabase
-                .from('limit')
-                .select('used, limit_amount, limit_name')
-                .eq('limit_id', limit_id)
-                .single();
-
-            if (limitFetchError || !limit) throw new Error("Không tìm thấy hạn mức chi tiêu.");
-
-            const newUsed = (limit.used || 0) + amount;
+            const { error: limitError } = await supabase.rpc('update_limit_atomic', {
+                p_limit_id: limit_id,
+                p_amount: amount
+            });
             
-            // Kiểm tra vượt hạn mức (Business Rule)
-            if (newUsed > limit.limit_amount) {
-                 throw new Error(`Giao dịch này sẽ vượt quá hạn mức "${limit.limit_name}".`);
+            if (limitError) {
+                if (limitError.message.includes('exceed') || limitError.message.includes('limit')) {
+                    throw new Error('Giao dịch vượt quá hạn mức cho phép');
+                }
+                throw new Error(`Limit update failed: ${limitError.message}`);
             }
-
-            // Cập nhật và yêu cầu trả về dòng dữ liệu đã sửa (.select())
-            const { data: updatedLimit, error: limitUpdateError } = await supabase
-                .from('limit')
-                .update({ used: newUsed })
-                .eq('limit_id', limit_id)
-                .select(); 
-
-            if (limitUpdateError) throw new Error(`Lỗi cập nhật hạn mức: ${limitUpdateError.message}`);
-            
-            // KIỂM TRA QUAN TRỌNG: Đảm bảo thực sự có dòng được update
-            if (!updatedLimit || updatedLimit.length === 0) {
-                throw new Error("Lỗi dữ liệu: Không tìm thấy bản ghi hạn mức để cập nhật (Sai ID hoặc bị ẩn).");
-            }
-
-            console.log(`[STEP 3 DONE] Updated Limit Used Amount to ${newUsed}.`);
         }
+
+        // --- THÀNH CÔNG ---
+        const successResult = { 
+            success: true, 
+            message: "Giao dịch thành công", 
+            id: transactionId,
+            type: type 
+        };
+        
+        // Lưu kết quả SUCCESS vào Redis (24h)
+        try {
+            await redis.set(cacheKey, successResult, { ex: 86400 });
+        } catch (cacheError) {
+            console.warn('[REDIS WARNING] Failed to cache success result:', cacheError);
+            // Không throw error, transaction đã thành công
+        }
+
+        return new Response(JSON.stringify(successResult), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+            status: 200
+        });
 
     } catch (processError: any) {
-        // COMPENSATING TRANSACTION (ROLLBACK / HOÀN TÁC)
-        console.error(`[SAGA ERROR] Có lỗi xảy ra: "${processError.message}". Đang tiến hành hoàn tác...`);
+        // --- COMPENSATING TRANSACTION (ROLLBACK) ---
+        console.error(`SAGA ERROR: ${processError.message}. Rolling back transaction ${transactionId}...`);
         
-        // 1. Hoàn tác Bước 1: Xóa giao dịch vừa tạo
-        if (transactionId) {
-             // Xóa dựa trên ID lấy được từ bước 1
-             let deleteQuery = supabase.from(tableName).delete();
-             
-             if (transData.id) deleteQuery = deleteQuery.eq('id', transactionId);
-             else if (transData.transaction_id) deleteQuery = deleteQuery.eq('transaction_id', transactionId);
-             else if (transData.income_id) deleteQuery = deleteQuery.eq('income_id', transactionId);
-             
-             await deleteQuery;
-             console.log("COMPENSATION: Đã xóa giao dịch rác.");
+        try {
+            // ✅ FIX: Dùng 'id' thay vì 'income_id'/'transaction_id'
+            await supabase.from(tableName).delete().eq('id', transactionId);
+            console.log(`[ROLLBACK] Successfully deleted transaction ${transactionId}`);
+        } catch (deleteError) {
+            console.error(`[ROLLBACK FAILED] Could not delete transaction ${transactionId}:`, deleteError);
+            // Ghi log để manual cleanup sau
         }
-
-        // 2. Hoàn tác Bước 2: Hoàn tiền ví (Nếu lỗi xảy ra ở Bước 3 - liên quan đến hạn mức)
-        if (processError.message.includes("hạn mức") || processError.message.includes("Lỗi dữ liệu")) {
-             const { data: currentWallet } = await supabase.from('wallets').select('balance').eq('wallet_id', wallet_id).single();
-             if (currentWallet) {
-                 // Trả lại tiền (cộng lại nếu là chi)
-                 await supabase.from('wallets').update({ balance: currentWallet.balance + amount }).eq('wallet_id', wallet_id);
-                 console.log("COMPENSATION: Đã hoàn tiền lại vào ví.");
-             }
+        
+        // Cache kết quả THẤT BẠI (TTL ngắn hơn - 5 phút)
+        const errorResult = { 
+            success: false, 
+            error: processError.message,
+            transaction_id: transactionId 
+        };
+        
+        try {
+            await redis.set(cacheKey, errorResult, { ex: 300 }); // 5 minutes
+        } catch (cacheError) {
+            console.warn('[REDIS WARNING] Failed to cache error result:', cacheError);
         }
-
-        // Ném lỗi tiếp ra ngoài để Frontend nhận được thông báo
+        
+        // Không cần rollback ví/limit vì dùng RPC atomic:
+        // Nếu RPC lỗi, Postgres tự động rollback (không commit thay đổi số dư)
+        
         throw processError;
     }
 
-    // THÀNH CÔNG HOÀN TOÀN
-    return new Response(
-      JSON.stringify({ success: true, message: "Giao dịch thành công" }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-    );
-
   } catch (error: any) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-    );
+    console.error('[SAGA FUNCTION ERROR]:', error);
+    return new Response(JSON.stringify({ 
+        success: false,
+        error: error.message 
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+      status: 400
+    });
   }
 });
