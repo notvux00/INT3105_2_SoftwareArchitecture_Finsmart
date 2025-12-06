@@ -41,8 +41,6 @@ describe('Core finance workflows', () => {
 
   it('creates a new income transaction successfully', () => {
     cy.visit('/transaction');
-    const alertStub = cy.stub();
-    cy.on('window:alert', alertStub);
 
     cy.get('input[placeholder="Nhập số tiền"]').should('be.visible').type('250000');
     cy.contains('button', 'Tiền lương').click();
@@ -55,11 +53,10 @@ describe('Core finance workflows', () => {
     cy.contains('button', 'Xác nhận').click();
     cy.wait('@mockCreateTransaction', { timeout: 15000 });
 
-    cy.wrap(alertStub).should((stub) => {
-      const calls = stub.getCalls();
-      const successCall = calls.find(call => call.args[0] && call.args[0].includes('thành công'));
-      expect(successCall).to.not.be.undefined;
-    });
+    // Check for toast notification instead of alert
+    cy.get('.Toastify__toast--success', { timeout: 10000 })
+      .should('be.visible')
+      .and('contain', 'Giao dịch thành công');
   });
 
   it('shows spending and income reports', () => {
