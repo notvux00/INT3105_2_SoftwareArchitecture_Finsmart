@@ -5,6 +5,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import CryptoJS from "crypto-js";
 import supabase from "../../database/supabase";
 import { startSpeechRecognition } from "../../frontend/speech";
+import { SystemStatus } from "../../shared/ui"; // Import SystemStatus component
 
 let user_id = 0;
 
@@ -122,6 +123,8 @@ function AI() {
               <span className="nav-label">Thông tin cá nhân</span>
             </button>
           </nav>
+          {/* Health Check Status */}
+          <SystemStatus />
         </div>
       </div>
       <section className="ai-section-container">

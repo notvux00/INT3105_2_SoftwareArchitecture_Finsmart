@@ -39,7 +39,7 @@ export const useAddTransaction = (userId) => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Mutation: GỌI EDGE FUNCTION với TIMEOUT + RETRY
+  // Mutation: GỌI EDGE FUNCTION với TIMEOUT + RETRY + OPTIMISTIC UPDATES
   const mutation = useMutation({
     mutationFn: async (transactionData) => {
       if (!userId) throw new Error("Không xác thực được người dùng.");
@@ -124,7 +124,52 @@ export const useAddTransaction = (userId) => {
       }
     },
 
+    // ===== 🆕 OPTIMISTIC UPDATE: Update UI NGAY trước khi gọi API =====
+    onMutate: async (newTransaction) => {
+      // BƯỚC 1: Cancel các queries đang chạy (tránh race condition)
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.TRANSACTIONS(userId) });
+
+      // BƯỚC 2: Snapshot data cũ (để rollback nếu lỗi)
+      const previousTransactions = queryClient.getQueryData(QUERY_KEYS.TRANSACTIONS(userId));
+
+      // BƯỚC 3: Optimistically update UI NGAY LẬP TỨC!
+      queryClient.setQueryData(QUERY_KEYS.TRANSACTIONS(userId), (old) => {
+        // Tạo transaction mới với temp ID
+        const optimisticTransaction = {
+          id: `temp-${Date.now()}`, // Temporary ID
+          user_id: userId,
+          category: newTransaction.category,
+          amount: parseFloat(newTransaction.amount),
+          date: new Date(newTransaction.date).toISOString(),
+          note: newTransaction.note || null,
+          type: newTransaction.type,
+          created_at: new Date().toISOString(),
+          // Đánh dấu là optimistic (để UI có thể hiển thị khác - optional)
+          _optimistic: true,
+        };
+
+        // ✅ FIX: Check if old is array before spreading
+        if (!old || !Array.isArray(old)) {
+          return [optimisticTransaction]; // Return array với 1 item
+        }
+
+        // Thêm vào đầu danh sách (transaction mới nhất)
+        return [optimisticTransaction, ...old];
+      });
+
+      // Hiển thị notification ngay
+      toast.info("💾 Đang lưu giao dịch...", {
+        position: "top-center",
+        autoClose: 1000,
+        hideProgressBar: true,
+      });
+
+      // Return context để dùng trong onError
+      return { previousTransactions };
+    },
+
     onSuccess: (result) => {
+      // BƯỚC 4: Refetch để sync với server (transaction thật có ID thật)
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS(userId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER(userId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LIMITS(userId) });
@@ -135,7 +180,16 @@ export const useAddTransaction = (userId) => {
       });
     },
 
-    onError: (error) => {
+    // ===== 🆕 ROLLBACK: Nếu lỗi thì khôi phục data cũ =====
+    onError: (error, newTransaction, context) => {
+      // ROLLBACK: Khôi phục data cũ
+      if (context?.previousTransactions) {
+        queryClient.setQueryData(
+          QUERY_KEYS.TRANSACTIONS(userId),
+          context.previousTransactions
+        );
+      }
+
       console.error("Lỗi thêm giao dịch:", error);
       
       let errorMessage = "Thêm giao dịch thất bại.";
@@ -152,6 +206,12 @@ export const useAddTransaction = (userId) => {
         position: "top-center",
         autoClose: 5000,
       });
+    },
+
+    // ===== 🆕 ALWAYS REFETCH: Sau khi xong (success hoặc error) =====
+    onSettled: () => {
+      // Đảm bảo data sync với server
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS(userId) });
     },
   });
 
