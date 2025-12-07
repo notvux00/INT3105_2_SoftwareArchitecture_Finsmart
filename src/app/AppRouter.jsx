@@ -3,7 +3,7 @@
  * Main routing configuration for the application
  */
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import ProtectedRoute from "../shared/ui/ProtectedRoute";
 
 // Import Pages (FSD Architecture)
@@ -26,91 +26,89 @@ import UpdateProfile from "../frontend/pages/UpdateProfile";
 
 function AppRouter() {
   return (
-    <Router>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-        {/* Protected Routes */}
-        <Route
-          path="/home"
-          element={
-            <ProtectedRoute>
-              <HomePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/transaction"
-          element={
-            <ProtectedRoute>
-              <TransactionsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/preodic"
-          element={
-            <ProtectedRoute>
-              <PeriodicPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/statistic"
-          element={
-            <ProtectedRoute>
-              <StatisticPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/economical"
-          element={
-            <ProtectedRoute>
-              <EconomicalPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <ProfilePage />
-            </ProtectedRoute>
-          }
-        />
+      {/* Protected Routes */}
+      <Route
+        path="/home"
+        element={
+          <ProtectedRoute>
+            <HomePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction"
+        element={
+          <ProtectedRoute>
+            <TransactionsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/preodic"
+        element={
+          <ProtectedRoute>
+            <PeriodicPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/statistic"
+        element={
+          <ProtectedRoute>
+            <StatisticPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/economical"
+        element={
+          <ProtectedRoute>
+            <EconomicalPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        }
+      />
 
-        {/* Legacy Routes (Vẫn dùng code cũ) */}
-        <Route
-          path="/ai"
-          element={
-            <ProtectedRoute>
-              <AI />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/update-profile"
-          element={
-            <ProtectedRoute>
-              <UpdateProfile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/history"
-          element={
-            <ProtectedRoute>
-              <HistoryPage />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </Router>
+      {/* Legacy Routes (Vẫn dùng code cũ) */}
+      <Route
+        path="/ai"
+        element={
+          <ProtectedRoute>
+            <AI />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/update-profile"
+        element={
+          <ProtectedRoute>
+            <UpdateProfile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/history"
+        element={
+          <ProtectedRoute>
+            <HistoryPage />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
   );
 }
 

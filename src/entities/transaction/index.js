@@ -7,4 +7,5 @@ export {
   useTransactions,
   useTransactionHistory,
 } from "./model/useTransactions";
+export { useTransactionRealtime } from "./model/useTransactionRealtime";
 export { default as TransactionCard } from "./ui/TransactionCard";

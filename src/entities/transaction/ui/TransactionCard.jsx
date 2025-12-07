@@ -6,7 +6,7 @@ import React from 'react';
 import { categoryIcons } from '../../../shared/config';
 
 const TransactionCard = ({ item, index }) => {
-  const isIncome = item.type === "income";
+  const isIncome = item.type === "income" || item.type === "thu";
   const amount = isIncome
     ? item.amount.toLocaleString("vi-VN")
     : `-${item.amount.toLocaleString("vi-VN")}`;

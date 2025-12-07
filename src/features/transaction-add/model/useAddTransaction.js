@@ -163,7 +163,7 @@ export const useAddTransaction = (userId) => {
         if (!oldUser) return null;
         
         const change = parseFloat(newTransaction.amount);
-        const newBalance = newTransaction.type === 'income' 
+        const newBalance = (newTransaction.type === 'income' || newTransaction.type === 'thu')
           ? (oldUser.balance || 0) + change
           : (oldUser.balance || 0) - change;
 
@@ -196,13 +196,10 @@ export const useAddTransaction = (userId) => {
       }
 
       // BƯỚC 4: Refetch để sync với server (transaction thật có ID thật)
-      // ⏳ DELAY REFETCH: Đợi 2s để Worker kịp xử lý xong (Queue Pattern)
-      // Nếu refetch ngay lập tức, DB chưa có dữ liệu -> UI sẽ bị mất Optimistic Update
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS(userId) });
-        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER(userId) });
-        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LIMITS(userId) });
-      }, 2000);
+      // ⏳ REALTIME ENABLED: Không cần chờ đợi nữa!
+      // Khi Worker ghi xong -> Realtime Event bắn về -> useTransactionRealtime sẽ tự động invalidate.
+      
+      // Chỉ hiển thị thông báo thành công. Việc update data để Realtime lo.
 
       toast.success("✅ Giao dịch thành công!", {
         position: "top-center",
