@@ -21,7 +21,7 @@ export const useUser = (userId) => {
       };
     },
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000, // Cache 5 phút
+    staleTime: 30 * 1000, // Cache 30 giây (Đồng bộ với useTransactions)
   });
 
   return {

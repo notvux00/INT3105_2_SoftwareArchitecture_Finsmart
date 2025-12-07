@@ -30,7 +30,7 @@ export const useTransactions = (userId) => {
       };
     },
     enabled: !!userId, // Chỉ chạy khi có userId
-    staleTime: 5 * 60 * 1000, // Dữ liệu được coi là mới trong 5 phút
+    staleTime: 30 * 1000, // Cache trong 30 giây 
     refetchOnWindowFocus: true, // Tự cập nhật khi user quay lại tab
   });
 

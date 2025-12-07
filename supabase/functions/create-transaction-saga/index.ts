@@ -57,118 +57,43 @@ serve(async (req) => {
         // Tiếp tục xử lý bình thường nếu Redis down
     }
 
-    // --- BẮT ĐẦU SAGA ---
+    // --- QUEUE PRODUCER LOGIC ---
     
-    // BƯỚC 1: TẠO TRANSACTION (Write-Ahead Log)
-    const tableName = type === 'thu' ? 'income' : 'transactions';
-    const transactionPayload: any = { 
-        user_id, 
-        wallet_id, 
-        category, 
-        amount, 
-        created_at: date, 
-        note 
+    const payload = {
+        user_id,
+        wallet_id,
+        category,
+        amount,
+        note,
+        date,
+        limit_id,
+        type,
+        idempotency_key,
+        timestamp: Date.now()
     };
-    if (type === 'chi' && limit_id) {
-        transactionPayload.limit_id = limit_id;
-    }
 
-    const { data: transData, error: transError } = await supabase
-      .from(tableName)
-      .insert([transactionPayload])
-      .select()
-      .single();
+    // Push to Redis Queue (List)
+    await redis.lpush('transaction_queue', payload);
 
-    if (transError) {
-        throw new Error(`Failed to create transaction: ${transError.message}`);
-    }
-    
-    // ✅ FIX: Cả 2 bảng đều dùng cột 'id' làm primary key
-    const transactionId = transData.id;
+    const successResult = { 
+        success: true, 
+        message: "Giao dịch đã được tiếp nhận và đang xử lý (Queue)", 
+        queue_id: idempotency_key 
+    };
 
-    try {
-        // BƯỚC 2: ATOMIC UPDATE WALLET
-        const { error: walletError } = await supabase.rpc('update_wallet_atomic', {
-            p_wallet_id: wallet_id,
-            p_amount: type === 'thu' ? amount : -amount,
-            p_min_balance: 0  // Không cho phép số dư âm
-        });
-        
-        if (walletError) {
-            // Cải thiện error message
-            if (walletError.message.includes('Insufficient') || walletError.message.includes('balance')) {
-                throw new Error('Số dư ví không đủ để thực hiện giao dịch');
-            }
-            throw new Error(`Wallet update failed: ${walletError.message}`);
-        }
+    // Cache tạm thái "pending" nếu cần query lại
+    await redis.set(`status:${idempotency_key}`, { status: 'queued' }, { ex: 300 });
 
-        // BƯỚC 3: ATOMIC UPDATE LIMIT (Nếu là chi tiêu và có limit)
-        if (type === 'chi' && limit_id) {
-            const { error: limitError } = await supabase.rpc('update_limit_atomic', {
-                p_limit_id: limit_id,
-                p_amount: amount
-            });
-            
-            if (limitError) {
-                if (limitError.message.includes('exceed') || limitError.message.includes('limit')) {
-                    throw new Error('Giao dịch vượt quá hạn mức cho phép');
-                }
-                throw new Error(`Limit update failed: ${limitError.message}`);
-            }
-        }
+    return new Response(JSON.stringify(successResult), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+        status: 202 // Accepted
+    });
 
-        // --- THÀNH CÔNG ---
-        const successResult = { 
-            success: true, 
-            message: "Giao dịch thành công", 
-            id: transactionId,
-            type: type 
-        };
-        
-        // Lưu kết quả SUCCESS vào Redis (24h)
-        try {
-            await redis.set(cacheKey, successResult, { ex: 86400 });
-        } catch (cacheError) {
-            console.warn('[REDIS WARNING] Failed to cache success result:', cacheError);
-            // Không throw error, transaction đã thành công
-        }
+    /* 
+       OLD SAGA LOGIC REMOVED - MOVED TO WORKER
+       The direct DB writes are now handled by process-queue-worker
+    */
 
-        return new Response(JSON.stringify(successResult), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
-            status: 200
-        });
-
-    } catch (processError: any) {
-        // --- COMPENSATING TRANSACTION (ROLLBACK) ---
-        console.error(`SAGA ERROR: ${processError.message}. Rolling back transaction ${transactionId}...`);
-        
-        try {
-            // ✅ FIX: Dùng 'id' thay vì 'income_id'/'transaction_id'
-            await supabase.from(tableName).delete().eq('id', transactionId);
-            console.log(`[ROLLBACK] Successfully deleted transaction ${transactionId}`);
-        } catch (deleteError) {
-            console.error(`[ROLLBACK FAILED] Could not delete transaction ${transactionId}:`, deleteError);
-            // Ghi log để manual cleanup sau
-        }
-        
-        // Cache kết quả THẤT BẠI (TTL ngắn hơn - 5 phút)
-        const errorResult = { 
-            success: false, 
-            error: processError.message,
-            transaction_id: transactionId 
-        };
-        
-        try {
-            await redis.set(cacheKey, errorResult, { ex: 300 }); // 5 minutes
-        } catch (cacheError) {
-            console.warn('[REDIS WARNING] Failed to cache error result:', cacheError);
-        }
-        
-        // Không cần rollback ví/limit vì dùng RPC atomic:
-        // Nếu RPC lỗi, Postgres tự động rollback (không commit thay đổi số dư)
-        
-        throw processError;
-    }
 
   } catch (error: any) {
     console.error('[SAGA FUNCTION ERROR]:', error);
