@@ -13,7 +13,7 @@
 ---
 
 ## 📌 Bản gốc
-- GitHub Repository: https://github.com/natuan05/FinSmartProject-FSD
+- GitHub Repository: https://github.com/notvux00/FinSmartProject
 
 ---
 
