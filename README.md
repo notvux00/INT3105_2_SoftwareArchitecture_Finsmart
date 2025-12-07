@@ -192,7 +192,7 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 - Hệ thống kiểm tra dữ liệu theo thứ tự tốc độ: **Memory** → **localStorage** → **API**. Chỉ gọi Server khi cache L1 và L2 đều không khả dụng.
 
 ### **3. Kết quả (Result)**
-- Sau khi chạy lần đầu tiên, khi mà F5 lại trang thì tốc độ tải trang được cải thiện đáng kể (gần như ngay lập tức).
+- Sau khi load lần đầu tiên, khi mà F5 lại trang thì tốc độ tải trang được cải thiện đáng kể (gần như ngay lập tức).
 - **Test Environment:** Chrome 120, Desktop, Navigation mode, Default network (no throttling).
   <img width="752" height="197" alt="image" src="image/cache.png"/>
 
@@ -219,6 +219,69 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 - **Giám sát tự động 24/7:** Hệ thống tự động ping server mỗi 30 giây (2,880 requests/ngày) để kiểm tra tình trạng hoạt động. Nếu phát hiện downtime, admin có thể can thiệp ngay lập tức thay vì chờ user khiếu nại. Trong quá trình vận hành thực tế, pattern này giúp phát hiện được các sự cố network ngắn hạn (1-2 phút) mà người dùng có thể không nhận ra.
 - **Cải thiện UX khi có sự cố:** Khi hệ thống offline, thay vì hiển thị lỗi mơ hồ **"Failed to fetch"** hay spinning loader mãi không dứt, user thấy ngay thông báo rõ ràng **"Mất kết nối"** với indicator đỏ. Điều này giúp user hiểu tình hình và quyết định đợi thay vì liên tục refresh trang hoặc spam button **"Xác nhận"**.
   <img width="1051" height="418" alt="image" src="image/healthcheck.png"/>
+
+---
+
+# C. Queue-Based Load Leveling Pattern (Hàng đợi xử lý)
+
+### **1. Vấn đề (Problem)**
+- **Traffic Spikes:** Khi có lượng lớn người dùng cùng thêm giao dịch (ví dụ: ngày nhận lương, ngày sale), Database bị quá tải do phải xử lý ghi (Write) liên tục. (Đã được mô phỏng 2000 request cùng lúc bằng script: [sim_spike.js](scenarios/sim_spike.js))
+- **Rủi ro mất dữ liệu:** Nếu API xử lý trực tiếp lỗi hoặc timeout giữa chừng, giao dịch bị mất mà không được thử lại.
+- **Blocking API:** Người dùng phải chờ Server xử lý xong toàn bộ logic (Validate -> Save DB -> Update Limit -> Update Balance) mới nhận được phản hồi, gây chậm trễ.
+  <img width="1051" height="418" alt="image" src="image/before-queue-based.png"/>
+
+
+### **2. Giải pháp (Solution)**
+- Chuyển API thêm giao dịch sang mô hình **Asynchronous (Bất đồng bộ)** sử dụng **Redis Queue**.
+- **Producer (API):** Nhận request, validate cơ bản, đẩy dữ liệu vào RabbitMQ/Redis Queue rồi trả về "Success" ngay lập tức (Non-blocking).
+- **Consumer (Worker):** Một tiến trình nền (Worker) chạy độc lập, lấy từng message từ Queue để xử lý từ từ (Leveling) và ghi vào Database.
+- Nếu Worker xử lý lỗi, message được đẩy lại vào Dead Letter Queue để retry sau hoặc kiểm tra thủ công.
+  <img width="1051" height="418" alt="image" src="image/sequence-queue.png"/>
+
+### **3. Kết quả (Result)**
+- **Chịu tải cao:** Hệ thống có thể nhận hàng nghìn request/giây mà không sập Database, vì Worker chỉ xử lý với tốc độ ổn định (ví dụ: 50 req/s).
+- **Phản hồi tức thì:** Người dùng bấm "Lưu" là xong ngay, không phải chờ xoay vòng.
+- **Độ tin cậy:** Không mất giao dịch nhờ cơ chế Retry và lưu trữ bền vững trong Queue.
+  <img width="1051" height="418" alt="image" src="image/queue-based-test.png"/>
+---
+
+# D. Offline Capability (Hoạt động khi mất mạng)
+
+### **1. Vấn đề (Problem)**
+- **Mạng chập chờn:** Người dùng di chuyển (thang máy, hầm xe) thường xuyên bị mất kết nối 4G/Wifi.
+- **Trải nghiệm gián đoạn:** Đang nhập giao dịch mà mất mạng -> Bấm Lưu bị lỗi -> Mất sạch dữ liệu vừa nhập, gây ức chế.
+- **Dữ liệu không đồng bộ:** Giao dịch lưu tạm ở LocalStorage nhưng khi có mạng lại không tự động gửi lên Server.
+
+### **2. Giải pháp (Solution)**
+- Áp dụng mô hình **Store-and-Forward**.
+- **Offline Storage:** Khi mất mạng, giao dịch mới được lưu tạm vào `localStorage` (hoặc IndexedDB) trong một hàng đợi riêng (`offlineQueue`).
+- **Network Listener:** Ứng dụng lắng nghe sự kiện `window.addEventListener('online')` hoặc polling status.
+- **Auto-Sync:** Ngay khi có mạng trở lại, hệ thống tự động quét `offlineQueue`, gửi lần lượt các giao dịch lên Server, và xóa khỏi hàng đợi khi thành công.
+<img width="1051" height="418" alt="image" src="image/offline-image.png"/>
+
+### **3. Kết quả (Result)**
+- **Liền mạch:** Người dùng sử dụng App bình thường kể cả khi không có mạng. Thông báo "Đã lưu vào bộ nhớ tạm" hiện ra trấn an người dùng.
+- **Tự động hóa:** Không cần người dùng bấm nút "Thử lại", hệ thống tự xử lý ngầm khi kết nối hồi phục.
+- **An toàn:** Đảm bảo không mất dữ liệu giao dịch quan trọng.
+
+---
+
+# E. Realtime Data Synchronization (Đồng bộ thời gian thực)
+
+### **1. Vấn đề (Problem)**
+- **Stale Data:** Người dùng A thêm giao dịch, nhưng Người dùng B (dùng chung tài khoản gia đình) hoặc Dashboard trên Laptop không thấy cập nhật cho đến khi F5 lại trang.
+- **Polling tốn kém:** Việc gọi API liên tục (mỗi 5s) để check dữ liệu mới làm tốn băng thông và tài nguyên Server không cần thiết.
+- **Độ trễ cao:** Polling 30s/lần thì người dùng phải chờ trung bình 15s mới thấy dữ liệu mới.
+
+### **2. Giải pháp (Solution)**
+- Tích hợp **Supabase Realtime** lắng nghe sự kiện Database Changes (`INSERT`, `UPDATE`, `DELETE`) trên các bảng `transactions`, `income`, `wallets`.
+- **WebSocket Connection:** Duy trì kết nối 2 chiều giữa Client và Server.
+- **Instant Update:** Ngay khi Database thay đổi (do User khác hoặc Worker xử lý xong), Server đẩy (Push) sự kiện về Client. Client tự động cập nhật Cache (React Query Invalidation) để hiển thị dữ liệu mới.
+<img width="1051" height="418" alt="image" src="image/realtime-data-synchronization.png"/>
+### **3. Kết quả (Result)**
+- **Đồng bộ tức thì (Sub-second latency):** Thêm giao dịch trên điện thoại, Web trên máy tính nhảy số dư ngay lập tức (< 100ms).
+- **Trải nghiệm mượt mà:** Không cần đến refresh trang web hay loading spinner. Tự động cập nhật dữ liệu khi có thay đổi.
+- **Tiết kiệm:** Không còn request dư thừa do Polling. Chỉ truyền dữ liệu khi thực sự có thay đổi.
 
 ---
 
