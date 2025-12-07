@@ -59,9 +59,11 @@ Hệ thống Finsmart bao gồm:
 ### **3. Kết quả (Result)**
 - **Kết quả chạy cục bộ:** 
   - ```npm run test:ci``` hiện chưa có file Jest test nên log “No tests found, exiting with code 0”, tuy nhiên exit code = 0 nên được coi là thành công.
-  - **Đây sẽ là chỗ cho hình ảnh**
+
+  <img width="752" height="132" alt="image" src="image/cicd1.png"/>
+
   - ```npm run e2e``` chạy 4 spec (auth, finance-flows, preodic, economical) với tổng 8 test, 8 passed, 0 failed (screenshot đính kèm).
-  - **Đây sẽ là chỗ cho hình ảnh**
+  <img width="752" height="277" alt="image" src="image/cicd2.png"/>
 - **Lợi ích đạt được:**
   - Mỗi lần push code, GitHub Actions tự động build và chạy lại toàn bộ kịch bản E2E cho các luồng quan trọng nhất của FinSmart.
   - Nếu một thay đổi làm hỏng luồng đăng nhập, tạo giao dịch, định kỳ hoặc tiết kiệm, pipeline sẽ fail ngay trên GitHub, giúp nhóm phát hiện và sửa lỗi sớm.
@@ -190,7 +192,7 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 ### **3. Kết quả (Result)**
 - Sau khi chạy lần đầu tiên, khi mà F5 lại trang thì tốc độ tải trang được cải thiện đáng kể (gần như ngay lập tức).
 - **Test Environment:** Chrome 120, Desktop, Navigation mode, Default network (no throttling).
-  - **Đây là chỗ cho hình ảnh**
+  <img width="752" height="197" alt="image" src="image/cache.png"/>
 
 ---
 
@@ -214,7 +216,7 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 - **Phát hiện downtime ngay lập tức:** Server Supabase bị restart hoặc deploy Edge Function mới → Health endpoint timeout hoặc trả HTTP 500 → Frontend nhận biết ngay sau 5 giây (timeout threshold) → Chuyển trạng thái sang 🔴 Mất kết nối tự động → User nhìn thấy indicator đỏ, biết hệ thống đang gặp sự cố thay vì lỗi mạng cá nhân → Tránh được việc user bấm retry nhiều lần gây duplicate requests.
 - **Giám sát tự động 24/7:** Hệ thống tự động ping server mỗi 30 giây (2,880 requests/ngày) để kiểm tra tình trạng hoạt động. Nếu phát hiện downtime, admin có thể can thiệp ngay lập tức thay vì chờ user khiếu nại. Trong quá trình vận hành thực tế, pattern này giúp phát hiện được các sự cố network ngắn hạn (1-2 phút) mà người dùng có thể không nhận ra.
 - **Cải thiện UX khi có sự cố:** Khi hệ thống offline, thay vì hiển thị lỗi mơ hồ **"Failed to fetch"** hay spinning loader mãi không dứt, user thấy ngay thông báo rõ ràng **"Mất kết nối"** với indicator đỏ. Điều này giúp user hiểu tình hình và quyết định đợi thay vì liên tục refresh trang hoặc spam button **"Xác nhận"**.
-- **Đây là chỗ cho hình ảnh**
+  <img width="1051" height="418" alt="image" src="image/healthcheck.png"/>
 
 ---
 
@@ -246,7 +248,7 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 - **Chặn Race Condition:** Đảm bảo số dư chính xác tuyệt đối khi có nhiều người dùng đồng thời.
 - **Rollback tự động:** Bảo vệ dữ liệu khi server crash hoặc vi phạm hạn mức/số dư.
 - **High Availability:** Hỗ trợ Auto-retry và Fallback khi Redis hoặc mạng gặp sự cố.
-- **Đây là chỗ cho hình ảnh**
+  <img width="1307" height="520" alt="image" src="image/saga.png"/>
 
 ---
 
@@ -268,7 +270,7 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 - **Code Maintenance:** Giảm 80% lượng code logic phức tạp ở Frontend.
 - **System Health:** Chuyển trạng thái Database từ High Load sang Low Load.
 - **Khi thực hiện truy vấn để thống kê lịch sử chi tiêu của user:**
-- **Đây là chỗ cho hình ảnh**
+  <img width="1177" height="476" alt="image" src="image/cqrs.png"/>
 
 ---
 
@@ -292,7 +294,7 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 - **Xử lý cao tải:** Chuyển đổi sang xử lý bất đồng bộ theo lô giúp giảm độ trễ phản hồi xuống và loại bỏ hoàn toàn nút thắt cổ chai khi có hàng nghìn giao dịch cùng thời điểm.
 - **Cơ chế tự phục hồi:** Tích hợp chiến lược Auto-Retry giúp hệ thống "miễn nhiễm" với các sự cố hạ tầng tạm thời (mạng lag, DB timeout), đảm bảo không mất dữ liệu.
 - **Toàn vẹn nghiệp vụ:** Cron Job thực hiện cơ chế Pre-check (kiểm tra trước số dư, hạn mức) nghiêm ngặt; tự động vô hiệu hóa (Disable) các tác vụ không hợp lệ để bảo vệ dữ liệu tài chính.
-- **Đây là chỗ cho hình ảnh**
+  <img width="1498" height="452" alt="image" src="image/sync request-reply.png"/>
 
 ---
 
