@@ -134,6 +134,8 @@ Hệ thống Finsmart bao gồm:
   - **Tối ưu hiệu năng & Giảm tải Database:** Toàn bộ việc kiểm tra diễn ra tại Edge (Redis), request rác bị chặn ngay từ cổng, không làm tốn tài nguyên Database xử lý. Độ trễ cực thấp nhờ thuật toán Fixed Window (độ phức tạp O(1)).
   - **Giải quyết vấn đề NAT (Trải nghiệm người dùng):** Nhờ cơ chế Targeted User Limit, hệ thống chỉ khóa tài khoản đang bị tấn công, không khóa toàn bộ IP. Người dùng khác dùng chung Wifi (như quán Cafe) vẫn truy cập bình thường.
   - **Ngăn chặn lạm dụng nội bộ:** Ngay cả user đã đăng nhập cũng bị giới hạn tần suất gọi API (ví dụ: ```rl-check```), ngăn chặn việc dùng tài khoản hợp lệ để DDoS hệ thống từ bên trong.
+<img width="762" height="215" alt="image" src="https://github.com/user-attachments/assets/1605a0be-ed61-43d7-ab45-9c5d5b5bd052" />
+
 
 ---
 
