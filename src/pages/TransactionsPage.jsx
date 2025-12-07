@@ -15,7 +15,7 @@ const SUPABASE_PROJECT_URL = "https://nvbdupcoynrzkrwyhrjc.supabase.co";
 const GEMINI_PROXY_ENDPOINT = `${SUPABASE_PROJECT_URL}/functions/v1/gemini-proxy`;
 
 const TransactionsPage = () => {
-  const navigate = useNavigate();
+  // const navigate = useNavigate(); // Unused
   const { userId } = useAuth();
   const { limits, addTransaction, loading } = useAddTransaction(userId);
 
@@ -138,9 +138,12 @@ Yêu cầu của người dùng: "${userMessage}"
       limitId: activeLimit,
     };
 
-    const success = await addTransaction(transactionData);
-    if (success) {
+    try {
+      await addTransaction(transactionData);
       resetForm();
+    } catch (error) {
+      console.error("Giao dịch thất bại:", error);
+      // Không reset form để người dùng sửa lại
     }
   };
 

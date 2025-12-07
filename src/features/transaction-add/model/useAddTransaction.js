@@ -133,6 +133,8 @@ export const useAddTransaction = (userId) => {
       const previousTransactions = queryClient.getQueryData(QUERY_KEYS.TRANSACTIONS(userId));
 
       // BƯỚC 3: Optimistically update UI NGAY LẬP TỨC!
+      
+      // 3.1. Update Transaction History (Home Page)
       queryClient.setQueryData(QUERY_KEYS.TRANSACTIONS(userId), (old) => {
         // Tạo transaction mới với temp ID
         const optimisticTransaction = {
@@ -144,17 +146,31 @@ export const useAddTransaction = (userId) => {
           note: newTransaction.note || null,
           type: newTransaction.type,
           created_at: new Date().toISOString(),
-          // Đánh dấu là optimistic (để UI có thể hiển thị khác - optional)
           _optimistic: true,
         };
 
-        // ✅ FIX: Check if old is array before spreading
-        if (!old || !Array.isArray(old)) {
-          return [optimisticTransaction]; // Return array với 1 item
-        }
+        if (!old) return { history: [optimisticTransaction] };
 
-        // Thêm vào đầu danh sách (transaction mới nhất)
-        return [optimisticTransaction, ...old];
+        // Clone old object and update history array
+        return {
+          ...old,
+          history: [optimisticTransaction, ...(old.history || [])],
+        };
+      });
+
+      // 3.2. Update Balance (Optimistic)
+      queryClient.setQueryData(QUERY_KEYS.USER(userId), (oldUser) => {
+        if (!oldUser) return null;
+        
+        const change = parseFloat(newTransaction.amount);
+        const newBalance = newTransaction.type === 'income' 
+          ? (oldUser.balance || 0) + change
+          : (oldUser.balance || 0) - change;
+
+        return {
+          ...oldUser,
+          balance: newBalance
+        };
       });
 
       // Hiển thị notification ngay
@@ -169,16 +185,32 @@ export const useAddTransaction = (userId) => {
     },
 
     onSuccess: (result) => {
+      // 🆕 Handle Offline Success
+      if (result.offline) {
+         toast.warning("💾 Mất mạng: Đã lưu vào bộ nhớ tạm!", {
+            position: "top-center",
+            autoClose: 3000,
+         });
+         // Không invalidate query để giữ optimistic update hiển thị
+         return; 
+      }
+
       // BƯỚC 4: Refetch để sync với server (transaction thật có ID thật)
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS(userId) });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER(userId) });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LIMITS(userId) });
+      // ⏳ DELAY REFETCH: Đợi 2s để Worker kịp xử lý xong (Queue Pattern)
+      // Nếu refetch ngay lập tức, DB chưa có dữ liệu -> UI sẽ bị mất Optimistic Update
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS(userId) });
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER(userId) });
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LIMITS(userId) });
+      }, 2000);
 
       toast.success("✅ Giao dịch thành công!", {
         position: "top-center",
         autoClose: 3000,
       });
     },
+
+
 
     // ===== 🆕 ROLLBACK: Nếu lỗi thì khôi phục data cũ =====
     onError: (error, newTransaction, context) => {
@@ -189,6 +221,11 @@ export const useAddTransaction = (userId) => {
           context.previousTransactions
         );
       }
+      
+      // Rollback Balance ?? 
+      // Best way is to invalidate, but we can also snapshot user data in onMutate.
+      // For now, simpler to just invalidate everything on Error to force sync.
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER(userId) });
 
       console.error("Lỗi thêm giao dịch:", error);
       
@@ -210,14 +247,13 @@ export const useAddTransaction = (userId) => {
 
     // ===== 🆕 ALWAYS REFETCH: Sau khi xong (success hoặc error) =====
     onSettled: () => {
-      // Đảm bảo data sync với server
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS(userId) });
+       // Không cần invalidate ngay ở đây nữa vì đã handle ở timer trên
     },
   });
 
   return {
     limits,
-    addTransaction: mutation.mutate,
+    addTransaction: mutation.mutateAsync, // ⭐ Đổi thành Async để form chờ kết quả
     loading: mutation.isPending,
     refetchLimits: () =>
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LIMITS(userId) }),
