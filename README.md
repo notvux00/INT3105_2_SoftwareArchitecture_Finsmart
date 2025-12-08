@@ -251,7 +251,7 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 # D. Queue-Based Load Leveling Pattern (Hàng đợi xử lý)
 
 ### **1. Vấn đề (Problem)**
-- **Traffic Spikes:** Khi có lượng lớn người dùng cùng thêm giao dịch (ví dụ: ngày nhận lương, ngày sale), Database bị quá tải do phải xử lý ghi (Write) liên tục. (Đã được mô phỏng 2000 request cùng lúc bằng script: [sim_spike.js](scenarios/sim_spike.js))
+- **Traffic Spikes:** Khi có lượng lớn người dùng cùng thêm giao dịch (ví dụ: ngày nhận lương, ngày sale), Database bị quá tải do phải xử lý ghi (Write) liên tục.
 - **Rủi ro mất dữ liệu:** Nếu API xử lý trực tiếp lỗi hoặc timeout giữa chừng, giao dịch bị mất mà không được thử lại.
 - **Blocking API:** Người dùng phải chờ Server xử lý xong toàn bộ logic (Validate -> Save DB -> Update Limit -> Update Balance) mới nhận được phản hồi, gây chậm trễ.
 
