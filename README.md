@@ -285,6 +285,31 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 
 ---
 
+# F. Refactoring to Feature-Sliced Design (FSD) (Tái cấu trúc Kiến trúc)
+
+### **1. Vấn đề (Problem)**
+- **Fat Page (Monolithic Components):** Các file trong `src/frontend/pages` (như `Home.js`, `Transaction.js`) ôm đồm quá nhiều trách nhiệm: từ gọi API (`fetchUser`, `fetchWallet`, ...), xử lý logic (tính toán thu chi, format date), quản lý State (hàng chục `useState`), đến hiển thị UI phức tạp.
+- **Tightly Coupled (Phụ thuộc chặt chẽ):** Logic nghiệp vụ bị khóa chặt trong Component, không thể tái sử dụng ở nơi khác. Ví dụ: Logic tính toán số dư ví không thể dùng lại trong phần Thống kê nếu không copy-paste.
+- **Khó bảo trì:** File mã nguồn dài hàng nghìn dòng. Mỗi khi sửa một lỗi nhỏ về logic cũng có nguy cơ làm vỡ giao diện (UI) và ngược lại.
+<img width="520" height="1080" alt="image" src="image/before-fsd.png"/>
+
+### **2. Giải pháp (Solution)**
+- **Feature-Sliced Design (FSD):** Tái cấu trúc toàn bộ dự án theo kiến trúc FSD, chia rõ các tầng (Layers):
+  - **App:** Settings global, providers, styles.
+  - **Processes:** Quy trình nghiệp vụ phức tạp liên quan nhiều trang.
+  - **Pages:** Cấu trúc các trang router của ứng dụng, chỉ chứa các Widget, không chứa logic nghiệp vụ.
+  - **Widgets:** Các block UI lớn (Header, Sidebar, TransactionList).
+  - **Features:** Các tính năng nghiệp vụ cụ thể (AddTransaction, AuthByRole) - chứa logic xử lý user interaction.
+  - **Entities:** Các thực thể business core (User, Transaction, Wallet) - chứa model và data fetching.
+  - **Shared:** Các thành phần dùng chung (UI kit, libs, API client).
+
+### **3. Kết quả (Result)**
+- **Tách biệt mối quan tâm (Separation of Concerns):** Logic tách biệt hoàn toàn khỏi UI. Page chỉ làm nhiệm vụ sắp xếp các Widget.
+- **Reusability & Scalability:** Entity và Feature có thể được tái sử dụng ở bất kỳ trang nào. Dễ dàng thêm tính năng mới mà không sợ ảnh hưởng đến các phần cũ.
+- **Easy Onboarding:** Cấu trúc thư mục rõ ràng giúp thành viên mới nhìn vào là biết logic nằm ở đâu.
+
+---
+
 ## **4. Lê Duy Vũ**
 
 ---
