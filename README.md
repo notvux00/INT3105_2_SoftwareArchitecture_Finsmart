@@ -178,27 +178,53 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 
 ---
 
-# A. Cache-Aside Pattern (Client-Side Caching)
+# A. Refactoring to Feature-Sliced Design (FSD) (Tái cấu trúc Kiến trúc)
 
 ### **1. Vấn đề (Problem)**
-- **Cache mất khi refresh page:** React Query chỉ cache trong memory (RAM), mỗi lần người dùng refresh page (F5) hoặc close/reopen browser, cache bị xóa hoàn toàn. Hậu quả: phải load lại toàn bộ data từ server mỗi lần refresh (~660ms), user experience kém, cảm giác app "chậm và lặp lại".
-- **API calls trùng lặp không cần thiết:** Mỗi lần refresh = 5-10 API calls được gọi lại dù data chưa thay đổi. Hậu quả: tốn 1.2 MB bandwidth mỗi lần, server bị spam requests (100K users/day = 350K duplicate calls/day).
-- **Navigate chậm khi memory cache expire:** Sau 10 phút không tương tác, memory cache bị garbage collected. Hậu quả: khi user navigate lại giữa các trang → phải fetch API từ đầu (500ms) thay vì instant (5-10ms), trải nghiệm bị gián đoạn.
+- **Fat Page (Monolithic Components):** Các file trong `src/frontend/pages` (như `Home.js`, `Transaction.js`) ôm đồm quá nhiều trách nhiệm: từ gọi API (`fetchUser`, `fetchWallet`, ...), xử lý logic (tính toán thu chi, format date), quản lý State (hàng chục `useState`), đến hiển thị UI phức tạp.
+- **Tightly Coupled (Phụ thuộc chặt chẽ):** Logic nghiệp vụ bị khóa chặt trong Component, không thể tái sử dụng ở nơi khác. Ví dụ: Logic tính toán số dư ví không thể dùng lại trong phần Thống kê nếu không copy-paste.
+- **Khó bảo trì:** File mã nguồn dài hàng nghìn dòng. Mỗi khi sửa một lỗi nhỏ về logic cũng có nguy cơ làm vỡ giao diện (UI) và ngược lại.
 
+  <img width="520" height="1080" alt="image" src="image/before-fsd.png"/>
 
 ### **2. Giải pháp (Solution)**
-- Từ **React Query (Memory Cache only)** sang **React Query + localStorage Persistence** → **Cache persist** qua refresh/close browser.
+- **Feature-Sliced Design (FSD):** Tái cấu trúc toàn bộ dự án theo kiến trúc FSD, chia rõ các tầng (Layers):
+  - **App:** Settings global, providers, styles.
+  - **Processes:** Quy trình nghiệp vụ phức tạp liên quan nhiều trang.
+  - **Pages:** Cấu trúc các trang router của ứng dụng, chỉ chứa các Widget, không chứa logic nghiệp vụ.
+  - **Widgets:** Các block UI lớn (Header, Sidebar, TransactionList).
+  - **Features:** Các tính năng nghiệp vụ cụ thể (AddTransaction, AuthByRole) - chứa logic xử lý user interaction.
+  - **Entities:** Các thực thể business core (User, Transaction, Wallet) - chứa model và data fetching.
+  - **Shared:** Các thành phần dùng chung (UI kit, libs, API client).
+
+### **3. Kết quả (Result)**
+- **Tách biệt mối quan tâm (Separation of Concerns):** Logic tách biệt hoàn toàn khỏi UI. Page chỉ làm nhiệm vụ sắp xếp các Widget.
+- **Reusability & Scalability:** Entity và Feature có thể được tái sử dụng ở bất kỳ trang nào. Dễ dàng thêm tính năng mới mà không sợ ảnh hưởng đến các phần cũ.
+- **Easy Onboarding:** Cấu trúc thư mục rõ ràng giúp thành viên mới nhìn vào là biết logic nằm ở đâu.
+
+---
+
+# B. Cache-Aside Pattern (Client-Side Caching)
+
+### **1. Vấn đề (Problem)**
+- **Cache mất khi refresh page:** Mỗi lần refresh, dữ liệu người dùng sẽ mất và phải chờ load lại.
+- **API calls trùng lặp không cần thiết:** Mỗi lần refresh = 5-10 API calls được gọi lại dù data chưa thay đổi. Hậu quả: tốn 1.2 MB bandwidth mỗi lần, server bị spam requests (100K users/day = 350K duplicate calls/day).
+- **Navigate chậm:** Khi user navigate lại giữa các trang → phải fetch API từ đầu (500ms) thay vì instant (5-10ms), trải nghiệm bị gián đoạn.
+
+### **2. Giải pháp (Solution)**
+- Sử dụng **React Query + localStorage Persistence** → **Cache persist** qua refresh/close browser.
 - **localStorage Persistence Layer:** Sử dụng ```@tanstack/react-query-persist-client``` để serialize cache từ memory xuống localStorage của browser. Cache key: ```FINSMART_QUERY_CACHE```, auto-sync mỗi khi data thay đổi, TTL 24 giờ (tự động expire).
 - Hệ thống kiểm tra dữ liệu theo thứ tự tốc độ: **Memory** → **localStorage** → **API**. Chỉ gọi Server khi cache L1 và L2 đều không khả dụng.
 
 ### **3. Kết quả (Result)**
-- Sau khi load lần đầu tiên, khi mà F5 lại trang thì tốc độ tải trang được cải thiện đáng kể (gần như ngay lập tức).
+- Khi điều hướng giữa các trang, người dùng không còn cần đợi load lại dữ liệu nữa.
 - **Test Environment:** Chrome 120, Desktop, Navigation mode, Default network (no throttling).
+
   <img width="752" height="197" alt="image" src="image/cache.png"/>
 
 ---
 
-# B. Health Endpoint Monitoring Pattern
+# C. Health Endpoint Monitoring Pattern
 
 ### **1. Vấn đề (Problem)**
 - **Silent Failures:** Khi backend gặp sự cố, người dùng chỉ phát hiện khi thực hiện thao tác (thêm giao dịch, xem thống kê). Hậu quả: trải nghiệm người dùng tệ, không biết lỗi do mạng hay hệ thống.
@@ -218,16 +244,18 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 - **Phát hiện downtime ngay lập tức:** Server Supabase bị restart hoặc deploy Edge Function mới → Health endpoint timeout hoặc trả HTTP 500 → Frontend nhận biết ngay sau 5 giây (timeout threshold) → Chuyển trạng thái sang 🔴 Mất kết nối tự động → User nhìn thấy indicator đỏ, biết hệ thống đang gặp sự cố thay vì lỗi mạng cá nhân → Tránh được việc user bấm retry nhiều lần gây duplicate requests.
 - **Giám sát tự động 24/7:** Hệ thống tự động ping server mỗi 30 giây (2,880 requests/ngày) để kiểm tra tình trạng hoạt động. Nếu phát hiện downtime, admin có thể can thiệp ngay lập tức thay vì chờ user khiếu nại. Trong quá trình vận hành thực tế, pattern này giúp phát hiện được các sự cố network ngắn hạn (1-2 phút) mà người dùng có thể không nhận ra.
 - **Cải thiện UX khi có sự cố:** Khi hệ thống offline, thay vì hiển thị lỗi mơ hồ **"Failed to fetch"** hay spinning loader mãi không dứt, user thấy ngay thông báo rõ ràng **"Mất kết nối"** với indicator đỏ. Điều này giúp user hiểu tình hình và quyết định đợi thay vì liên tục refresh trang hoặc spam button **"Xác nhận"**.
+
   <img width="1051" height="418" alt="image" src="image/healthcheck.png"/>
 
 ---
 
-# C. Queue-Based Load Leveling Pattern (Hàng đợi xử lý)
+# D. Queue-Based Load Leveling Pattern (Hàng đợi xử lý)
 
 ### **1. Vấn đề (Problem)**
 - **Traffic Spikes:** Khi có lượng lớn người dùng cùng thêm giao dịch (ví dụ: ngày nhận lương, ngày sale), Database bị quá tải do phải xử lý ghi (Write) liên tục. (Đã được mô phỏng 2000 request cùng lúc bằng script: [sim_spike.js](scenarios/sim_spike.js))
 - **Rủi ro mất dữ liệu:** Nếu API xử lý trực tiếp lỗi hoặc timeout giữa chừng, giao dịch bị mất mà không được thử lại.
 - **Blocking API:** Người dùng phải chờ Server xử lý xong toàn bộ logic (Validate -> Save DB -> Update Limit -> Update Balance) mới nhận được phản hồi, gây chậm trễ.
+
   <img width="1051" height="418" alt="image" src="image/before-queue-based.png"/>
 
 
@@ -236,16 +264,18 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 - **Producer (API):** Nhận request, validate cơ bản, đẩy dữ liệu vào RabbitMQ/Redis Queue rồi trả về "Success" ngay lập tức (Non-blocking).
 - **Consumer (Worker):** Một tiến trình nền (Worker) chạy độc lập, lấy từng message từ Queue để xử lý từ từ (Leveling) và ghi vào Database.
 - Nếu Worker xử lý lỗi, message được đẩy lại vào Dead Letter Queue để retry sau hoặc kiểm tra thủ công.
+
   <img width="1051" height="418" alt="image" src="image/sequence-queue.png"/>
 
 ### **3. Kết quả (Result)**
 - **Chịu tải cao:** Hệ thống có thể nhận hàng nghìn request/giây mà không sập Database, vì Worker chỉ xử lý với tốc độ ổn định (ví dụ: 50 req/s).
 - **Phản hồi tức thì:** Người dùng bấm "Lưu" là xong ngay, không phải chờ xoay vòng.
 - **Độ tin cậy:** Không mất giao dịch nhờ cơ chế Retry và lưu trữ bền vững trong Queue.
+
   <img width="1051" height="418" alt="image" src="image/queue-based-test.png"/>
 ---
 
-# D. Offline Capability (Hoạt động khi mất mạng)
+# E. Offline Capability (Hoạt động khi mất mạng)
 
 ### **1. Vấn đề (Problem)**
 - **Mạng chập chờn:** Người dùng di chuyển (thang máy, hầm xe) thường xuyên bị mất kết nối 4G/Wifi.
@@ -257,6 +287,7 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 - **Offline Storage:** Khi mất mạng, giao dịch mới được lưu tạm vào `localStorage` (hoặc IndexedDB) trong một hàng đợi riêng (`offlineQueue`).
 - **Network Listener:** Ứng dụng lắng nghe sự kiện `window.addEventListener('online')` hoặc polling status.
 - **Auto-Sync:** Ngay khi có mạng trở lại, hệ thống tự động quét `offlineQueue`, gửi lần lượt các giao dịch lên Server, và xóa khỏi hàng đợi khi thành công.
+
 <img width="1051" height="418" alt="image" src="image/offline-image.png"/>
 
 ### **3. Kết quả (Result)**
@@ -266,7 +297,7 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 
 ---
 
-# E. Realtime Data Synchronization (Đồng bộ thời gian thực)
+# F. Realtime Data Synchronization (Đồng bộ thời gian thực)
 
 ### **1. Vấn đề (Problem)**
 - **Stale Data:** Người dùng A thêm giao dịch, nhưng Người dùng B (dùng chung tài khoản gia đình) hoặc Dashboard trên Laptop không thấy cập nhật cho đến khi F5 lại trang.
@@ -282,31 +313,6 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 - **Đồng bộ tức thì (Sub-second latency):** Thêm giao dịch trên điện thoại, Web trên máy tính nhảy số dư ngay lập tức (< 100ms).
 - **Trải nghiệm mượt mà:** Không cần đến refresh trang web hay loading spinner. Tự động cập nhật dữ liệu khi có thay đổi.
 - **Tiết kiệm:** Không còn request dư thừa do Polling. Chỉ truyền dữ liệu khi thực sự có thay đổi.
-
----
-
-# F. Refactoring to Feature-Sliced Design (FSD) (Tái cấu trúc Kiến trúc)
-
-### **1. Vấn đề (Problem)**
-- **Fat Page (Monolithic Components):** Các file trong `src/frontend/pages` (như `Home.js`, `Transaction.js`) ôm đồm quá nhiều trách nhiệm: từ gọi API (`fetchUser`, `fetchWallet`, ...), xử lý logic (tính toán thu chi, format date), quản lý State (hàng chục `useState`), đến hiển thị UI phức tạp.
-- **Tightly Coupled (Phụ thuộc chặt chẽ):** Logic nghiệp vụ bị khóa chặt trong Component, không thể tái sử dụng ở nơi khác. Ví dụ: Logic tính toán số dư ví không thể dùng lại trong phần Thống kê nếu không copy-paste.
-- **Khó bảo trì:** File mã nguồn dài hàng nghìn dòng. Mỗi khi sửa một lỗi nhỏ về logic cũng có nguy cơ làm vỡ giao diện (UI) và ngược lại.
-<img width="520" height="1080" alt="image" src="image/before-fsd.png"/>
-
-### **2. Giải pháp (Solution)**
-- **Feature-Sliced Design (FSD):** Tái cấu trúc toàn bộ dự án theo kiến trúc FSD, chia rõ các tầng (Layers):
-  - **App:** Settings global, providers, styles.
-  - **Processes:** Quy trình nghiệp vụ phức tạp liên quan nhiều trang.
-  - **Pages:** Cấu trúc các trang router của ứng dụng, chỉ chứa các Widget, không chứa logic nghiệp vụ.
-  - **Widgets:** Các block UI lớn (Header, Sidebar, TransactionList).
-  - **Features:** Các tính năng nghiệp vụ cụ thể (AddTransaction, AuthByRole) - chứa logic xử lý user interaction.
-  - **Entities:** Các thực thể business core (User, Transaction, Wallet) - chứa model và data fetching.
-  - **Shared:** Các thành phần dùng chung (UI kit, libs, API client).
-
-### **3. Kết quả (Result)**
-- **Tách biệt mối quan tâm (Separation of Concerns):** Logic tách biệt hoàn toàn khỏi UI. Page chỉ làm nhiệm vụ sắp xếp các Widget.
-- **Reusability & Scalability:** Entity và Feature có thể được tái sử dụng ở bất kỳ trang nào. Dễ dàng thêm tính năng mới mà không sợ ảnh hưởng đến các phần cũ.
-- **Easy Onboarding:** Cấu trúc thư mục rõ ràng giúp thành viên mới nhìn vào là biết logic nằm ở đâu.
 
 ---
 
