@@ -260,7 +260,7 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 
 ### **2. Giải pháp (Solution)**
 - Chuyển API thêm giao dịch sang mô hình **Asynchronous (Bất đồng bộ)** sử dụng **Redis Queue**.
-- **Producer (API):** Nhận request, validate cơ bản, đẩy dữ liệu vào RabbitMQ/Redis Queue rồi trả về "Success" ngay lập tức (Non-blocking).
+- **Producer (API):** Nhận request, validate cơ bản, đẩy dữ liệu vào Redis Queue rồi trả về "Success" ngay lập tức (Non-blocking).
 - **Consumer (Worker):** Một tiến trình nền (Worker) chạy độc lập, lấy từng message từ Queue để xử lý từ từ (Leveling) và ghi vào Database.
 - Nếu Worker xử lý lỗi, message được đẩy lại vào Dead Letter Queue để retry sau hoặc kiểm tra thủ công.
 
