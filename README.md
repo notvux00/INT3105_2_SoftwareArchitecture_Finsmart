@@ -255,9 +255,6 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 - **Rủi ro mất dữ liệu:** Nếu API xử lý trực tiếp lỗi hoặc timeout giữa chừng, giao dịch bị mất mà không được thử lại.
 - **Blocking API:** Người dùng phải chờ Server xử lý xong toàn bộ logic (Validate -> Save DB -> Update Limit -> Update Balance) mới nhận được phản hồi, gây chậm trễ.
 
-  <img width="1051" height="418" alt="image" src="image/before-queue-based.png"/>
-
-
 ### **2. Giải pháp (Solution)**
 - Chuyển API thêm giao dịch sang mô hình **Asynchronous (Bất đồng bộ)** sử dụng **Redis Queue**.
 - **Producer (API):** Nhận request, validate cơ bản, đẩy dữ liệu vào Redis Queue rồi trả về "Success" ngay lập tức (Non-blocking).
@@ -271,7 +268,6 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 - **Phản hồi tức thì:** Người dùng bấm "Lưu" là xong ngay, không phải chờ xoay vòng.
 - **Độ tin cậy:** Không mất giao dịch nhờ cơ chế Retry và lưu trữ bền vững trong Queue.
 
-  <img width="1051" height="418" alt="image" src="image/queue-based-test.png"/>
 ---
 
 # E. Offline Capability (Hoạt động khi mất mạng)
