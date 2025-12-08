@@ -243,7 +243,6 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 ### **3. Tình huống cụ thể (Example)**
 - **Phát hiện downtime ngay lập tức:** Server Supabase bị restart hoặc deploy Edge Function mới → Health endpoint timeout hoặc trả HTTP 500 → Frontend nhận biết ngay sau 5 giây (timeout threshold) → Chuyển trạng thái sang 🔴 Mất kết nối tự động → User nhìn thấy indicator đỏ, biết hệ thống đang gặp sự cố thay vì lỗi mạng cá nhân → Tránh được việc user bấm retry nhiều lần gây duplicate requests.
 - **Giám sát tự động 24/7:** Hệ thống tự động ping server mỗi 30 giây (2,880 requests/ngày) để kiểm tra tình trạng hoạt động. Nếu phát hiện downtime, admin có thể can thiệp ngay lập tức thay vì chờ user khiếu nại. Trong quá trình vận hành thực tế, pattern này giúp phát hiện được các sự cố network ngắn hạn (1-2 phút) mà người dùng có thể không nhận ra.
-- **Cải thiện UX khi có sự cố:** Khi hệ thống offline, thay vì hiển thị lỗi mơ hồ **"Failed to fetch"** hay spinning loader mãi không dứt, user thấy ngay thông báo rõ ràng **"Mất kết nối"** với indicator đỏ. Điều này giúp user hiểu tình hình và quyết định đợi thay vì liên tục refresh trang hoặc spam button **"Xác nhận"**.
 
   <img width="1051" height="418" alt="image" src="image/healthcheck.png"/>
 
