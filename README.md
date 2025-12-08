@@ -277,7 +277,7 @@ Lớp này tập trung vào bảo vệ hệ thống và ngăn chặn Retry Storm
 - Tích hợp **Supabase Realtime** lắng nghe sự kiện Database Changes (`INSERT`, `UPDATE`, `DELETE`) trên các bảng `transactions`, `income`, `wallets`.
 - **WebSocket Connection:** Duy trì kết nối 2 chiều giữa Client và Server.
 - **Instant Update:** Ngay khi Database thay đổi (do User khác hoặc Worker xử lý xong), Server đẩy (Push) sự kiện về Client. Client tự động cập nhật Cache (React Query Invalidation) để hiển thị dữ liệu mới.
-<img width="1051" height="418" alt="image" src="image/realtime-data-synchronization.png"/>
+
 ### **3. Kết quả (Result)**
 - **Đồng bộ tức thì (Sub-second latency):** Thêm giao dịch trên điện thoại, Web trên máy tính nhảy số dư ngay lập tức (< 100ms).
 - **Trải nghiệm mượt mà:** Không cần đến refresh trang web hay loading spinner. Tự động cập nhật dữ liệu khi có thay đổi.
